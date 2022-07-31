@@ -3,6 +3,7 @@ name = "taskiq-redis"
 version = "0.1.0"
 description = ""
 authors = ["taskiq-team"]
+packages = [{ include = "taskiq", from = "taskiq_redis" }]
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -24,6 +25,27 @@ pytest-cov = "^3.0.0"
 anyio = "^3.6.1"
 pytest-env = "^0.6.2"
 fakeredis = "^1.8.1"
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+allow_subclassing_any = true
+allow_untyped_calls = true
+pretty = true
+show_error_codes = true
+implicit_reexport = true
+allow_untyped_decorators = true
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    'redis.asyncio'
+]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

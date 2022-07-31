@@ -1,6 +1,6 @@
 from typing import Mapping, Optional, Union
 
-from errors.redis_errors import RedisConnectionError  # type: ignore
+from errors import RedisConnectionError
 from redis.asyncio import Redis
 
 
@@ -13,9 +13,9 @@ class RedisClient:
 
         :param redis_url: Redis URL to connect.
         """
-        self.redis_client: Redis = Redis.from_url(redis_url)
+        self.redis_client = Redis.from_url(redis_url)
 
-    async def close(self):
+    async def close(self) -> None:
         """Closes redis connection."""
         await self.redis_client.close()
 

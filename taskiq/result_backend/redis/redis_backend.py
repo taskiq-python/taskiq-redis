@@ -1,14 +1,15 @@
 import pickle
 from typing import Any, Dict, TypeVar
 
-from redis_client import RedisClient  # type: ignore
-from taskiq import AsyncResultBackend
+from redis_client import RedisClient
 from taskiq.abc.result_backend import TaskiqResult
+
+from taskiq import AsyncResultBackend
 
 _ReturnType = TypeVar("_ReturnType")
 
 
-class RedisAsyncResultBackend(AsyncResultBackend):
+class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     """Async result based on redis."""
 
     def __init__(self, redis_url: str):
