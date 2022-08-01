@@ -9,7 +9,6 @@ packages = [{ include = "taskiq", from = "taskiq_redis" }]
 python = "^3.7"
 taskiq = { git = "https://github.com/taskiq-python/taskiq", branch = "master" }
 redis = "4.3.4"
-types-redis = "^4.3.12"
 flake8 = "^4.0.1"
 
 [tool.poetry.dev-dependencies]

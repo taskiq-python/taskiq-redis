@@ -1,7 +1,7 @@
 from typing import Mapping, Optional, Union
 
 from errors import RedisConnectionError
-from redis.asyncio import Redis
+from redis.asyncio import ConnectionPool, Redis
 
 
 class RedisClient:
@@ -13,11 +13,11 @@ class RedisClient:
 
         :param redis_url: Redis URL to connect.
         """
-        self.redis_client = Redis.from_url(redis_url)
+        self.redis_pool = ConnectionPool.from_url(redis_url)
 
     async def close(self) -> None:
         """Closes redis connection."""
-        await self.redis_client.close()
+        await self.redis_pool.disconnect()
 
     async def hset(
         self,
@@ -33,7 +33,8 @@ class RedisClient:
         :raises RedisConnectionError: if redis is not available.
         """
         try:
-            await self.redis_client.hset(name, mapping=mapping)
+            async with Redis(connection_pool=self.redis_pool) as redis:
+                await redis.hset(name, mapping=mapping)
         except ConnectionError as exc:
             raise RedisConnectionError("Redis is unavailable") from exc
 
@@ -49,7 +50,8 @@ class RedisClient:
         :returns: bytes.
         """
         try:
-            return await self.redis_client.hget(name=name, key=key)
+            async with Redis(connection_pool=self.redis_pool) as redis:
+                return await redis.hget(name=name, key=key)
         except ConnectionError as exc:
             raise RedisConnectionError("Redis is unavailable") from exc
 
@@ -64,6 +66,7 @@ class RedisClient:
         :returns: True if name exists else False
         """
         try:
-            return bool(await self.redis_client.exists(name))
+            async with Redis(connection_pool=self.redis_pool) as redis:
+                return bool(await redis.exists(name))
         except ConnectionError as exc:
             raise RedisConnectionError("Redis is unavailable") from exc
