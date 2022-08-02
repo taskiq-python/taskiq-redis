@@ -1,7 +1,7 @@
 import pickle
 from typing import Any, Dict, TypeVar
 
-from redis_client import RedisClient
+from redis.asyncio import ConnectionPool, Redis
 from taskiq.abc.result_backend import TaskiqResult
 
 from taskiq import AsyncResultBackend
@@ -17,11 +17,11 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
 
     async def startup(self) -> None:
         """Makes redis connection on startup."""
-        self.redis_client = RedisClient(redis_url=self.redis_url)
+        self.redis_pool = ConnectionPool.from_url(self.redis_url)
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
-        await self.redis_client.close()
+        await self.redis_pool.disconnect()
 
     async def set_result(
         self,
@@ -37,16 +37,16 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param task_id: ID of the task.
         :param result: TaskiqResult instance.
         """
-        to_insert_result_data = {}
+        result_dict = result.dict()
 
-        for result_key, result_value in result.__dict__.items():
-            result_value = pickle.dumps(result_value)
-            to_insert_result_data[result_key] = result_value
+        for result_key, result_value in result_dict.items():
+            result_dict[result_key] = pickle.dumps(result_value)
 
-        await self.redis_client.hset(
-            task_id,
-            mapping=to_insert_result_data,
-        )
+        async with Redis(connection_pool=self.redis_pool) as redis:
+            await redis.hset(
+                task_id,
+                mapping=result_dict,
+            )
 
     async def is_result_ready(self, task_id: str) -> bool:
         """
@@ -56,7 +56,8 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
 
         :returns: True if the result is ready else False.
         """
-        return await self.redis_client.exists(task_id)
+        async with Redis(connection_pool=self.redis_pool) as redis:
+            return await redis.exists(task_id)
 
     async def get_result(
         self,
@@ -70,24 +71,32 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param with_logs: if True it will download task's logs.
         :return: task's return value.
         """
-        task_data: Dict[str, Any] = {"log": None}
-
-        redis_key_result_param = {
-            "is_err": "is_err",
-            "_return_value": "return_value",
-            "execution_time": "execution_time",
+        result: Dict[str, Any] = {
+            result_key: None for result_key in TaskiqResult.__fields__
         }
 
-        if with_logs:
-            redis_key_result_param["log"] = "log"
+        if not with_logs:
+            result.pop("log")
 
-        for redis_key, result_param in redis_key_result_param.items():
-            key_data = pickle.loads(
-                await self.redis_client.hget(
-                    task_id,
-                    redis_key,
-                ),
+        async with Redis(connection_pool=self.redis_pool) as redis:
+            result_values = await redis.hmget(
+                name=task_id,
+                keys=result,
             )
-            task_data[result_param] = key_data
 
-        return TaskiqResult(**task_data)
+        for result_value, result_key in zip(result_values, result):
+            result[result_key] = pickle.loads(result_value)
+
+        return TaskiqResult(**result)
+
+
+async def main():
+    t = TaskiqResult(
+        is_err=False,
+        log="ASD",
+        return_value=123,
+        execution_time=1.0,
+    )
+
+    r = RedisAsyncResultBackend("redis://localhost:6379")
+    await r.set_result()

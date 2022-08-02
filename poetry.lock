@@ -184,7 +184,7 @@ python-versions = "*"
 
 [[package]]
 name = "fakeredis"
-version = "1.8.2"
+version = "1.9.0"
 description = "Fake implementation of redis API for testing purposes."
 category = "dev"
 optional = false
@@ -771,7 +771,7 @@ typing-extensions = ">=3.10.0.0"
 type = "git"
 url = "https://github.com/taskiq-python/taskiq"
 reference = "master"
-resolved_reference = "9004b022e5f7c2ba19a0ccd88eeb66b4a3868e88"
+resolved_reference = "030c0b5eb41846fdabd7df05960a665ae75026be"
 
 [[package]]
 name = "tokenize-rt"
@@ -845,14 +845,14 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
 [[package]]
 name = "yesqa"
-version = "1.3.0"
+version = "1.4.0"
 description = "Automatically remove unnecessary `# noqa` comments."
 category = "dev"
 optional = false
-python-versions = ">=3.6.1"
+python-versions = ">=3.7"
 
 [package.dependencies]
-flake8 = ">=3.8"
+flake8 = ">=3.9"
 tokenize-rt = ">=2.1"
 
 [[package]]
@@ -1261,8 +1261,5 @@ wrapt = [
     {file = "wrapt-1.14.1-cp39-cp39-win_amd64.whl", hash = "sha256:dee60e1de1898bde3b238f18340eec6148986da0455d8ba7848d50470a7a32fb"},
     {file = "wrapt-1.14.1.tar.gz", hash = "sha256:380a85cf89e0e69b7cfbe2ea9f765f004ff419f34194018a6827ac0e3edfed4d"},
 ]
-yesqa = [
-    {file = "yesqa-1.3.0-py2.py3-none-any.whl", hash = "sha256:81ebcfd85fa8e811df1fd7bc5e31d37fcc693570c8e383f40387c90382c950de"},
-    {file = "yesqa-1.3.0.tar.gz", hash = "sha256:5263ba0515fc67ce5dd78b9010c14ebd1bd10813599d4b0cd758567e6396c587"},
-]
+yesqa = []
 zipp = []
