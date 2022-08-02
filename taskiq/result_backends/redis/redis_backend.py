@@ -88,15 +88,3 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             result[result_key] = pickle.loads(result_value)
 
         return TaskiqResult(**result)
-
-
-async def main():
-    t = TaskiqResult(
-        is_err=False,
-        log="ASD",
-        return_value=123,
-        execution_time=1.0,
-    )
-
-    r = RedisAsyncResultBackend("redis://localhost:6379")
-    await r.set_result()
