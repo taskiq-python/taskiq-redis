@@ -1,5 +1,5 @@
 import pickle
-from typing import Any, Dict, TypeVar
+from typing import TypeVar
 
 from redis.asyncio import ConnectionPool, Redis
 from taskiq.abc.result_backend import TaskiqResult
@@ -13,11 +13,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     """Async result based on redis."""
 
     def __init__(self, redis_url: str):
-        self.redis_url = redis_url
-
-    async def startup(self) -> None:
-        """Makes redis connection on startup."""
-        self.redis_pool = ConnectionPool.from_url(self.redis_url)
+        self.redis_pool = ConnectionPool.from_url(redis_url)
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
@@ -57,9 +53,9 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :returns: True if the result is ready else False.
         """
         async with Redis(connection_pool=self.redis_pool) as redis:
-            return await redis.exists(task_id)
+            return bool(await redis.exists(task_id))
 
-    async def get_result(
+    async def get_result(  # noqa: WPS210
         self,
         task_id: str,
         with_logs: bool = False,
@@ -71,20 +67,20 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param with_logs: if True it will download task's logs.
         :return: task's return value.
         """
-        result: Dict[str, Any] = {
-            result_key: None for result_key in TaskiqResult.__fields__
-        }
+        fields = list(TaskiqResult.__fields__.keys())
 
         if not with_logs:
-            result.pop("log")
+            fields.remove("log")
 
         async with Redis(connection_pool=self.redis_pool) as redis:
             result_values = await redis.hmget(
                 name=task_id,
-                keys=result,
+                keys=fields,
             )
 
-        for result_value, result_key in zip(result_values, result):
-            result[result_key] = pickle.loads(result_value)
+        result = {
+            result_key: pickle.loads(result_value)
+            for result_value, result_key in zip(result_values, fields)
+        }
 
         return TaskiqResult(**result)
