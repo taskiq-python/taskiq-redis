@@ -1,15 +1,14 @@
 [tool.poetry]
 name = "taskiq-redis"
 version = "0.1.0"
-description = ""
-authors = ["taskiq-team"]
+description = "Redis integration for taskiq"
+authors = ["taskiq-team <taskiq@norely.com>"]
 packages = [{ include = "taskiq", from = "taskiq_redis" }]
 
 [tool.poetry.dependencies]
 python = "^3.7"
 taskiq = { git = "https://github.com/taskiq-python/taskiq", branch = "master" }
 redis = "4.3.4"
-flake8 = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"
@@ -37,9 +36,7 @@ allow_untyped_decorators = true
 warn_return_any = false
 
 [[tool.mypy.overrides]]
-module = [
-    'redis.asyncio'
-]
+module = ['redis.asyncio']
 ignore_missing_imports = true
 
 [tool.isort]

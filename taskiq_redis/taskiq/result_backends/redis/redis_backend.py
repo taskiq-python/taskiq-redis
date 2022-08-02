@@ -2,9 +2,8 @@ import pickle
 from typing import TypeVar
 
 from redis.asyncio import ConnectionPool, Redis
-from taskiq.abc.result_backend import TaskiqResult
-
 from taskiq import AsyncResultBackend
+from taskiq.abc.result_backend import TaskiqResult
 
 _ReturnType = TypeVar("_ReturnType")
 
