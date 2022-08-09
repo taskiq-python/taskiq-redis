@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "taskiq-redis"
-version = "0.1.0"
+version = "0.0.1"
 description = "Redis integration for taskiq"
 authors = ["taskiq-team <taskiq@norely.com>"]
 packages = [{ include = "taskiq", from = "taskiq_redis" }]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-taskiq = { git = "https://github.com/taskiq-python/taskiq", branch = "master" }
+taskiq = "^0.0.1"
 redis = "4.3.4"
 
 [tool.poetry.dev-dependencies]
