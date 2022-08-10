@@ -7,7 +7,7 @@ authors = ["taskiq-team <taskiq@norely.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-taskiq = "^0.0.1"
+taskiq = "^0"
 redis = "4.3.4"
 
 [tool.poetry.dev-dependencies]
