@@ -9,6 +9,10 @@ max-arguments=8
 max-line-complexity=20
 
 ignore =
+  ; Found too deep nesting
+  WPS220,
+  ; Found `%` string formatting
+  WPS323,
   ; Found `f` string
   WPS305,
   ; Missing docstring in public module
