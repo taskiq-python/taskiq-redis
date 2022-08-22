@@ -24,6 +24,7 @@ anyio = "^3.6.1"
 pytest-env = "^0.6.2"
 fakeredis = "^1.8.1"
 pre-commit = "^2.20.0"
+pytest-xdist = {version = "^2.5.0", extras = ["psutil"]}
 
 [tool.mypy]
 strict = true
