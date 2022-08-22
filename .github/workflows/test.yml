@@ -1,0 +1,80 @@
+name: Testing taskiq-redis
+
+on: push
+
+jobs:
+  black:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install deps
+        uses: knowsuchagency/poetry-install@v1
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+      - name: Run black check
+        run: poetry run black --check .
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install deps
+        uses: knowsuchagency/poetry-install@v1
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+      - name: Run flake8 check
+        run: poetry run flake8 --count .
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install deps
+        uses: knowsuchagency/poetry-install@v1
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+      - name: Run mypy check
+        run: poetry run mypy .
+  pytest:
+    services:
+      redis:
+        image: bitnami/redis:6.2.5
+        env:
+          ALLOW_EMPTY_PASSWORD: "yes"
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+        ports:
+          - 6379:6379
+    strategy:
+      matrix:
+        py_version: ["3.7", "3.8", "3.9", "3.10"]
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "${{ matrix.py_version }}"
+      - name: Update pip
+        run: python -m pip install -U pip
+      - name: Install poetry
+        run: python -m pip install poetry
+      - name: Install deps
+        run: poetry install
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+      - name: Run pytest check
+        run: poetry run pytest -vv -n auto --cov="taskiq_redis" .
