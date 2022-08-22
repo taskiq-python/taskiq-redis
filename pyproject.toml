@@ -3,7 +3,19 @@ name = "taskiq-redis"
 version = "0.0.2"
 description = "Redis integration for taskiq"
 authors = ["taskiq-team <taskiq@norely.com>"]
-
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+homepage = "https://github.com/taskiq-python/taskiq-redis"
+repository = "https://github.com/taskiq-python/taskiq-redis"
+keywords = ["taskiq", "tasks", "distributed", "async", "redis", "result_backend"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
