@@ -1,4 +1,4 @@
-name: Testing taskiq-aio-pika
+name: Testing taskiq-redis
 
 on: push
 
