@@ -1,6 +1,7 @@
+import asyncio
 import pickle
 from logging import getLogger
-from typing import Any, AsyncGenerator, Callable, Optional, TypeVar
+from typing import Any, Callable, Coroutine, Optional, TypeVar
 
 from redis.asyncio import ConnectionPool, Redis
 from taskiq.abc.broker import AsyncBroker
@@ -49,7 +50,7 @@ class RedisBroker(AsyncBroker):
 
     async def shutdown(self) -> None:
         """Closes redis connection pool."""
-        self.connection_pool.disconnect()
+        await self.connection_pool.disconnect()
 
     async def kick(self, message: BrokerMessage) -> None:
         """
@@ -69,26 +70,30 @@ class RedisBroker(AsyncBroker):
                 pickle.dumps(message),
             )
 
-    async def listen(self) -> AsyncGenerator[BrokerMessage, None]:
+    async def listen(
+        self,
+        callback: Callable[[BrokerMessage], Coroutine[Any, Any, None]],
+    ) -> None:
         """
         Listen redis list for new messages.
 
-        This function listens to list and yields new messages.
+        This function listens to list calls callback on
+        new messages.
 
-        :yields: parsed broker messages.
+        :param callback: function to call on new message.
         """
+        loop = asyncio.get_event_loop()
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
             redis_pubsub_channel = redis_conn.pubsub()
             await redis_pubsub_channel.subscribe(self.redis_pubsub_channel)
-            while True:
-                redis_pickled_message = await redis_pubsub_channel.get_message()
-                if redis_pickled_message:
+            async for message in redis_pubsub_channel.listen():
+                if message:
                     try:
                         redis_message = pickle.loads(
-                            redis_pickled_message["data"],
+                            message["data"],
                         )
                         if isinstance(redis_message, BrokerMessage):
-                            yield redis_message
+                            loop.create_task(callback(redis_message))
                     except (
                         TypeError,
                         AttributeError,
