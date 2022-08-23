@@ -279,7 +279,7 @@ flake8 = ">=3.5,<5"
 
 [[package]]
 name = "flake8-bugbear"
-version = "22.8.22"
+version = "22.8.23"
 description = "A plugin for flake8 finding likely bugs and design problems in your program. Contains warnings that don't belong in pyflakes and pycodestyle."
 category = "dev"
 optional = false
@@ -884,7 +884,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "taskiq"
-version = "0.0.4"
+version = "0.0.7"
 description = "Distributed task queue with full async support"
 category = "main"
 optional = false
@@ -1195,8 +1195,8 @@ flake8-broken-line = [
     {file = "flake8_broken_line-0.4.0-py3-none-any.whl", hash = "sha256:e9c522856862239a2c7ef2c1de0276fa598572aa864bd4e9c7efc2a827538515"},
 ]
 flake8-bugbear = [
-    {file = "flake8-bugbear-22.8.22.tar.gz", hash = "sha256:1d240736dc93ecad9ff21e1d521283b9461d132b3ff2170569bd5ff3dacda385"},
-    {file = "flake8_bugbear-22.8.22-py3-none-any.whl", hash = "sha256:b5718bf5d0d28a4cfd15054f4706fc2936f7339ed8366b919a1979eb5df50764"},
+    {file = "flake8-bugbear-22.8.23.tar.gz", hash = "sha256:de0717d11124a082118dd08387b34fd86b2721642ec2d8e92be66cfa5ea7c445"},
+    {file = "flake8_bugbear-22.8.23-py3-none-any.whl", hash = "sha256:1b0ebe0873d1cd55bf9f1588bfcb930db339018ef44a3981a26532daa9fd14a8"},
 ]
 flake8-commas = [
     {file = "flake8-commas-2.1.0.tar.gz", hash = "sha256:940441ab8ee544df564ae3b3f49f20462d75d5c7cac2463e0b27436e2050f263"},
@@ -1514,8 +1514,8 @@ stevedore = [
     {file = "stevedore-3.5.0.tar.gz", hash = "sha256:f40253887d8712eaa2bb0ea3830374416736dc8ec0e22f5a65092c1174c44335"},
 ]
 taskiq = [
-    {file = "taskiq-0.0.4-py3-none-any.whl", hash = "sha256:4363a4f856de367f62fe09940f5ddb80430df41f9c82cc4825af7c1344fa1ef6"},
-    {file = "taskiq-0.0.4.tar.gz", hash = "sha256:053ddb1d127720b56df890c085681a5fcd12df778d53b4a4ce708e4f1d0b9a50"},
+    {file = "taskiq-0.0.7-py3-none-any.whl", hash = "sha256:5d6df8431bd4b6ee8954c8ea2fb2f919835a2600a7ec3122e707730c78f96b34"},
+    {file = "taskiq-0.0.7.tar.gz", hash = "sha256:b8c9072a09c8c60f3758b68dfae5da686babde61d3935c5a956a2a3eddc1da46"},
 ]
 tokenize-rt = [
     {file = "tokenize_rt-4.2.1-py2.py3-none-any.whl", hash = "sha256:08a27fa032a81cf45e8858d0ac706004fcd523e8463415ddf1442be38e204ea8"},
