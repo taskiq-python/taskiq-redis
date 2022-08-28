@@ -32,10 +32,13 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param task_id: ID of the task.
         :param result: TaskiqResult instance.
         """
-        result_dict = result.dict()
+        result_dict = result.dict(exclude={"return_value"})
 
         for result_key, result_value in result_dict.items():
             result_dict[result_key] = pickle.dumps(result_value)
+        # This trick will preserve original returned value.
+        # It helps when you return not serializable classes.
+        result_dict["return_value"] = pickle.dumps(result.return_value)
 
         async with Redis(connection_pool=self.redis_pool) as redis:
             await redis.hset(
