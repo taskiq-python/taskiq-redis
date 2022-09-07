@@ -41,8 +41,8 @@ async def best_task_ever() -> None:
 
 
 async def main():
-    task = await my_async_task.kiq()
-    print(await task.get_result())
+    task = await best_task_ever.kiq()
+    print(await task.wait_result())
 
 
 asyncio.run(main())
