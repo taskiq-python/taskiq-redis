@@ -27,6 +27,7 @@ redis_async_result = RedisAsyncResultBackend(
     redis_url="redis://localhost:6379",
 )
 
+# Or you can use BroadcastRedisBroker if you need broadcasting
 broker = RedisBroker(
     url="redis://localhost:6379",
     result_backend=redis_async_result,

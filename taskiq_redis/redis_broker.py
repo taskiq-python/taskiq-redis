@@ -1,4 +1,5 @@
 import pickle
+from abc import abstractmethod
 from logging import getLogger
 from typing import Any, AsyncGenerator, Callable, Optional, TypeVar
 
@@ -12,8 +13,8 @@ _T = TypeVar("_T")  # noqa: WPS111
 logger = getLogger("taskiq.redis_broker")
 
 
-class RedisBroker(AsyncBroker):
-    """Broker that works with Redis."""
+class BaseRedisBroker(AsyncBroker):
+    """Base broker that works with Redis."""
 
     def __init__(
         self,
@@ -44,30 +45,11 @@ class RedisBroker(AsyncBroker):
             max_connections=max_connection_pool_size,
             **connection_kwargs,
         )
-
-        self.redis_pubsub_channel = queue_name
+        self.queue_name = queue_name
 
     async def shutdown(self) -> None:
         """Closes redis connection pool."""
         await self.connection_pool.disconnect()
-
-    async def kick(self, message: BrokerMessage) -> None:
-        """
-        Sends a message to the redis broker list.
-
-        This function constructs message for redis
-        and sends it.
-
-        The message is pickled dict object with message,
-        task_id, task_name and labels.
-
-        :param message: message to send.
-        """
-        async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            await redis_conn.publish(
-                self.redis_pubsub_channel,
-                pickle.dumps(message),
-            )
 
     async def listen(self) -> AsyncGenerator[BrokerMessage, None]:
         """
@@ -78,24 +60,60 @@ class RedisBroker(AsyncBroker):
 
         :yields: broker messages.
         """
+        async for message in self._listen_to_raw_messages():
+            try:
+                redis_message = pickle.loads(message)
+                if isinstance(redis_message, BrokerMessage):
+                    yield redis_message
+            except (
+                TypeError,
+                AttributeError,
+                pickle.UnpicklingError,
+            ) as exc:
+                logger.debug(
+                    "Cannot read broker message %s",
+                    exc,
+                    exc_info=True,
+                )
+
+    @abstractmethod
+    async def _listen_to_raw_messages(self) -> AsyncGenerator[bytes, None]:
+        """
+        Generator for reading raw data from Redis.
+
+        :yields: raw data.
+        """
+        yield  # type: ignore
+
+
+class BroadcastRedisBroker(BaseRedisBroker):
+    """Broker that works with Redis and broadcasts a task to all workers."""
+
+    async def kick(self, message: BrokerMessage) -> None:  # noqa: D102
+        async with Redis(connection_pool=self.connection_pool) as redis_conn:
+            await redis_conn.publish(self.queue_name, pickle.dumps(message))
+
+    async def _listen_to_raw_messages(self) -> AsyncGenerator[bytes, None]:
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
             redis_pubsub_channel = redis_conn.pubsub()
-            await redis_pubsub_channel.subscribe(self.redis_pubsub_channel)
+            await redis_pubsub_channel.subscribe(self.queue_name)
             async for message in redis_pubsub_channel.listen():
-                if message:
-                    try:
-                        redis_message = pickle.loads(
-                            message["data"],
-                        )
-                        if isinstance(redis_message, BrokerMessage):
-                            yield redis_message
-                    except (
-                        TypeError,
-                        AttributeError,
-                        pickle.UnpicklingError,
-                    ) as exc:
-                        logger.debug(
-                            "Cannot read broker message %s",
-                            exc,
-                            exc_info=True,
-                        )
+                if not message:
+                    continue
+                yield message["data"]
+
+
+class RedisBroker(BaseRedisBroker):
+    """Broker that works with Redis."""
+
+    async def kick(self, message: BrokerMessage) -> None:  # noqa: D102
+        async with Redis(connection_pool=self.connection_pool) as redis_conn:
+            await redis_conn.lpush(self.queue_name, pickle.dumps(message))
+
+    async def _listen_to_raw_messages(self) -> AsyncGenerator[bytes, None]:
+        redis_brpop_data_position = 1
+        async with Redis(connection_pool=self.connection_pool) as redis_conn:
+            while True:  # noqa: WPS457
+                yield (await redis_conn.brpop(self.queue_name))[
+                    redis_brpop_data_position
+                ]
