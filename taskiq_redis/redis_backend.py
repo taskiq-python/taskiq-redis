@@ -11,8 +11,15 @@ _ReturnType = TypeVar("_ReturnType")
 class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     """Async result based on redis."""
 
-    def __init__(self, redis_url: str):
+    def __init__(self, redis_url: str, keep_results: bool = False):
+        """
+        Constructs a new result backend.
+
+        :param redis_url: url to redis.
+        :param keep_results: flag to not remove results from Redis after reading.
+        """
         self.redis_pool = ConnectionPool.from_url(redis_url)
+        self.keep_results = keep_results
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
@@ -75,12 +82,13 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             fields.remove("log")
 
         async with Redis(connection_pool=self.redis_pool) as redis:
-            async with redis.pipeline() as pipe:
-                result_values, _ = await (
-                    pipe.hmget(name=task_id, keys=fields)
-                    .delete(task_id)
-                    .execute()
-                )
+            result_values = await redis.hmget(
+                name=task_id,
+                keys=fields,
+            )
+
+            if not self.keep_results:
+                await redis.delete(task_id)
 
         result = {
             result_key: pickle.loads(result_value)

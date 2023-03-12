@@ -24,7 +24,7 @@ from taskiq_redis.redis_backend import RedisAsyncResultBackend
 
 
 redis_async_result = RedisAsyncResultBackend(
-    url="redis://localhost:6379",
+    redis_url="redis://localhost:6379",
 )
 
 broker = RedisBroker(
@@ -41,7 +41,7 @@ async def best_task_ever() -> None:
 
 
 async def main():
-    task = await my_async_task.kiq()
+    task = await best_task_ever.kiq()
     print(await task.get_result())
 
 
@@ -60,4 +60,5 @@ RedisBroker parameters:
 ## RedisAsyncResultBackend configuration
 
 RedisAsyncResultBackend parameters:
-* `url` - url to redis.
+* `redis_url` - url to redis.
+* `keep_results` - flag to not remove results from Redis after reading.
