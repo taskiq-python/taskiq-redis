@@ -11,7 +11,7 @@ _ReturnType = TypeVar("_ReturnType")
 class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     """Async result based on redis."""
 
-    def __init__(self, redis_url: str, keep_results: bool = False):
+    def __init__(self, redis_url: str, keep_results: bool = True):
         """
         Constructs a new result backend.
 
