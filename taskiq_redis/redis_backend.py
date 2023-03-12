@@ -75,10 +75,12 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             fields.remove("log")
 
         async with Redis(connection_pool=self.redis_pool) as redis:
-            result_values = await redis.hmget(
-                name=task_id,
-                keys=fields,
-            )
+            async with redis.pipeline() as pipe:
+                result_values, _ = await (
+                    pipe.hmget(name=task_id, keys=fields)
+                    .delete(task_id)
+                    .execute()
+                )
 
         result = {
             result_key: pickle.loads(result_value)
