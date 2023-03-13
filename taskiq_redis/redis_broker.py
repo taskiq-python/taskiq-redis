@@ -86,8 +86,8 @@ class BaseRedisBroker(AsyncBroker):
         yield  # type: ignore
 
 
-class BroadcastRedisBroker(BaseRedisBroker):
-    """Broker that works with Redis and broadcasts a task to all workers."""
+class PubSubBroker(BaseRedisBroker):
+    """Broker that works with Redis and broadcasts tasks to all workers."""
 
     async def kick(self, message: BrokerMessage) -> None:  # noqa: D102
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
@@ -103,8 +103,8 @@ class BroadcastRedisBroker(BaseRedisBroker):
                 yield message["data"]
 
 
-class RedisBroker(BaseRedisBroker):
-    """Broker that works with Redis."""
+class ListQueueBroker(BaseRedisBroker):
+    """Broker that works with Redis and distributes tasks between workers."""
 
     async def kick(self, message: BrokerMessage) -> None:  # noqa: D102
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
