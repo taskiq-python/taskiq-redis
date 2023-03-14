@@ -16,18 +16,19 @@ pip install taskiq-redis
 # Usage
 
 Let's see the example with the redis broker and redis async result:
+
 ```python
 import asyncio
 
-from taskiq_redis.redis_broker import RedisBroker
+from taskiq_redis.redis_broker import ListQueueBroker
 from taskiq_redis.redis_backend import RedisAsyncResultBackend
-
 
 redis_async_result = RedisAsyncResultBackend(
     redis_url="redis://localhost:6379",
 )
 
-broker = RedisBroker(
+# Or you can use PubSubBroker if you need broadcasting
+broker = ListQueueBroker(
     url="redis://localhost:6379",
     result_backend=redis_async_result,
 )
