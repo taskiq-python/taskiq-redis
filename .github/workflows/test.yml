@@ -1,7 +1,6 @@
 name: Testing taskiq-redis
 
 on:
-  push:
   pull_request:
 
 jobs:
