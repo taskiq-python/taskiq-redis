@@ -16,18 +16,19 @@ pip install taskiq-redis
 # Usage
 
 Let's see the example with the redis broker and redis async result:
+
 ```python
 import asyncio
 
-from taskiq_redis.redis_broker import RedisBroker
+from taskiq_redis.redis_broker import ListQueueBroker
 from taskiq_redis.redis_backend import RedisAsyncResultBackend
-
 
 redis_async_result = RedisAsyncResultBackend(
     redis_url="redis://localhost:6379",
 )
 
-broker = RedisBroker(
+# Or you can use PubSubBroker if you need broadcasting
+broker = ListQueueBroker(
     url="redis://localhost:6379",
     result_backend=redis_async_result,
 )
@@ -48,9 +49,17 @@ async def main():
 asyncio.run(main())
 ```
 
-## RedisBroker configuration
+## PubSubBroker and ListQueueBroker configuration
 
-RedisBroker parameters:
+We have two brokers with similar interfaces, but with different logic.
+The PubSubBroker uses redis' pubsub mechanism and is very powerful,
+but it executes every task on all workers, because PUBSUB broadcasts message
+to all subscribers.
+
+If you want your messages to be processed only once, please use ListQueueBroker.
+It uses redis' [LPUSH](https://redis.io/commands/lpush/) and [BRPOP](https://redis.io/commands/brpop/) commands to deal with messages.
+
+Brokers parameters:
 * `url` - url to redis.
 * `task_id_generator` - custom task_id genertaor.
 * `result_backend` - custom result backend.
