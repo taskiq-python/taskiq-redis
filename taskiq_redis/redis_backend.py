@@ -24,6 +24,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     async def shutdown(self) -> None:
         """Closes redis connection."""
         await self.redis_pool.disconnect()
+        await super().shutdown()
 
     async def set_result(
         self,
