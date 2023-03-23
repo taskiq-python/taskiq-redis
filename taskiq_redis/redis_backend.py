@@ -1,9 +1,14 @@
 import pickle
-from typing import TypeVar
+from typing import Dict, Optional, TypeVar, Union
 
 from redis.asyncio import ConnectionPool, Redis
 from taskiq import AsyncResultBackend
 from taskiq.abc.result_backend import TaskiqResult
+
+from taskiq_redis.exceptions import (
+    DuplicateExpireTimeSelectedError,
+    ExpireTimeMustBeMoreThanZeroError,
+)
 
 _ReturnType = TypeVar("_ReturnType")
 
@@ -11,19 +16,48 @@ _ReturnType = TypeVar("_ReturnType")
 class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     """Async result based on redis."""
 
-    def __init__(self, redis_url: str, keep_results: bool = True):
+    def __init__(
+        self,
+        redis_url: str,
+        keep_results: bool = True,
+        result_ex_time: Optional[int] = None,
+        result_px_time: Optional[int] = None,
+    ):
         """
         Constructs a new result backend.
 
         :param redis_url: url to redis.
         :param keep_results: flag to not remove results from Redis after reading.
+        :param result_ex_time: expire time in seconds for result.
+        :param result_px_time: expire time in milliseconds for result.
+
+        :raises DuplicateExpireTimeSelectedError: if result_ex_time
+            and result_px_time are selected.
+        :raises ExpireTimeMustBeMoreThanZeroError: if result_ex_time
+            and result_px_time are equal zero.
         """
         self.redis_pool = ConnectionPool.from_url(redis_url)
         self.keep_results = keep_results
+        self.result_ex_time = result_ex_time
+        self.result_px_time = result_px_time
+
+        if self.result_ex_time == 0 or self.result_px_time == 0:
+            raise ExpireTimeMustBeMoreThanZeroError(
+                "You must select one expire time param and it must be more than zero.",
+            )
+
+        if self.result_ex_time and self.result_px_time:
+            raise DuplicateExpireTimeSelectedError(
+                "Choose either result_ex_time or result_px_time.",
+            )
+
+        if not self.result_ex_time and not self.result_px_time:
+            self.result_ex_time = 60
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
         await self.redis_pool.disconnect()
+        await super().shutdown()
 
     async def set_result(
         self,
@@ -39,19 +73,17 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param task_id: ID of the task.
         :param result: TaskiqResult instance.
         """
-        result_dict = result.dict(exclude={"return_value"})
-
-        for result_key, result_value in result_dict.items():
-            result_dict[result_key] = pickle.dumps(result_value)
-        # This trick will preserve original returned value.
-        # It helps when you return not serializable classes.
-        result_dict["return_value"] = pickle.dumps(result.return_value)
+        redis_set_params: Dict[str, Union[str, bytes, int]] = {
+            "name": task_id,
+            "value": pickle.dumps(result),
+        }
+        if self.result_ex_time:
+            redis_set_params["ex"] = self.result_ex_time
+        elif self.result_px_time:
+            redis_set_params["px"] = self.result_px_time
 
         async with Redis(connection_pool=self.redis_pool) as redis:
-            await redis.hset(
-                task_id,
-                mapping=result_dict,
-            )
+            await redis.set(**redis_set_params)
 
     async def is_result_ready(self, task_id: str) -> bool:
         """
@@ -76,23 +108,19 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param with_logs: if True it will download task's logs.
         :return: task's return value.
         """
-        fields = list(TaskiqResult.__fields__.keys())
+        async with Redis(connection_pool=self.redis_pool) as redis:
+            if self.keep_results:
+                result_value = await redis.get(
+                    name=task_id,
+                )
+            else:
+                result_value = await redis.getdel(
+                    name=task_id,
+                )
+
+        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(result_value)
 
         if not with_logs:
-            fields.remove("log")
+            taskiq_result.log = None
 
-        async with Redis(connection_pool=self.redis_pool) as redis:
-            result_values = await redis.hmget(
-                name=task_id,
-                keys=fields,
-            )
-
-            if not self.keep_results:
-                await redis.delete(task_id)
-
-        result = {
-            result_key: pickle.loads(result_value)
-            for result_value, result_key in zip(result_values, fields)
-        }
-
-        return TaskiqResult(**result)
+        return taskiq_result
