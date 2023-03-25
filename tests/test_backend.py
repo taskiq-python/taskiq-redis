@@ -132,7 +132,13 @@ async def test_cant_specify_ex_and_px_params(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    "ex_time, px_time",
+    [(0, 0), (-500, 0), (0, -500), (-500, -500)],
+)
 async def test_ex_or_px_must_be_more_than_zero(
+    ex_time: int,
+    px_time: int,
     redis_url: str,
 ) -> None:
     """
@@ -143,8 +149,8 @@ async def test_ex_or_px_must_be_more_than_zero(
     with pytest.raises(ExpireTimeMustBeMoreThanZeroError):
         RedisAsyncResultBackend(
             redis_url,
-            result_ex_time=0,
-            result_px_time=0,
+            result_ex_time=ex_time,
+            result_px_time=px_time,
         )
 
 
