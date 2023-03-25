@@ -74,7 +74,7 @@ RedisAsyncResultBackend parameters:
 * `result_ex_time` - expire time in seconds (by default - not specified)
 * `result_px_time` - expire time in milliseconds (by default - not specified)
 > IMPORTANT: **It is highly recommended to use expire time ​​in RedisAsyncResultBackend**  
-> You must specify either `result_ex_time` or `result_px_time`.  
+> If you want to add expiration, either `result_ex_time` or `result_px_time` must be set.  
 >```python
 ># First variant
 >redis_async_result = RedisAsyncResultBackend(
