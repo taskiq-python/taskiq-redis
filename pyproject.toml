@@ -19,7 +19,7 @@ keywords = ["taskiq", "tasks", "distributed", "async", "redis", "result_backend"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-taskiq = "^0.2.0"
+taskiq = "^0"
 redis = "^4.2.0"
 
 [tool.poetry.dev-dependencies]
