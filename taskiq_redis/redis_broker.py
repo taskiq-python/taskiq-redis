@@ -49,6 +49,7 @@ class BaseRedisBroker(AsyncBroker):
 
     async def shutdown(self) -> None:
         """Closes redis connection pool."""
+        await super().shutdown()
         await self.connection_pool.disconnect()
 
     async def listen(self) -> AsyncGenerator[BrokerMessage, None]:
