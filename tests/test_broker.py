@@ -4,7 +4,7 @@ import uuid
 import pytest
 from taskiq import AsyncBroker, BrokerMessage
 
-from taskiq_redis.redis_broker import ListQueueBroker, PubSubBroker
+from taskiq_redis import ListQueueBroker, PubSubBroker
 
 
 async def get_message(broker: AsyncBroker) -> BrokerMessage:  # type: ignore
