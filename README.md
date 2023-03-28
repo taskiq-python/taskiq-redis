@@ -20,8 +20,7 @@ Let's see the example with the redis broker and redis async result:
 ```python
 import asyncio
 
-from taskiq_redis.redis_broker import ListQueueBroker
-from taskiq_redis.redis_backend import RedisAsyncResultBackend
+from taskiq_redis import ListQueueBroker, RedisAsyncResultBackend
 
 redis_async_result = RedisAsyncResultBackend(
     redis_url="redis://localhost:6379",
