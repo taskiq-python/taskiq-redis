@@ -5,11 +5,11 @@ from typing import TypeVar
 import pytest
 from taskiq import TaskiqResult
 
+from taskiq_redis import RedisAsyncResultBackend
 from taskiq_redis.exceptions import (
     DuplicateExpireTimeSelectedError,
     ExpireTimeMustBeMoreThanZeroError,
 )
-from taskiq_redis.redis_backend import RedisAsyncResultBackend
 
 _ReturnType = TypeVar("_ReturnType")
 
