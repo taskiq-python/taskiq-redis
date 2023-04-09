@@ -3,7 +3,7 @@ import uuid
 import pytest
 from taskiq import TaskiqResult
 
-from taskiq_redis.redis_backend import RedisAsyncResultBackend
+from taskiq_redis import RedisAsyncResultBackend
 
 
 @pytest.mark.anyio

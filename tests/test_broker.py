@@ -4,10 +4,10 @@ import uuid
 import pytest
 from taskiq import AsyncBroker, BrokerMessage
 
-from taskiq_redis.redis_broker import ListQueueBroker, PubSubBroker
+from taskiq_redis import ListQueueBroker, PubSubBroker
 
 
-async def get_message(broker: AsyncBroker) -> BrokerMessage:  # type: ignore
+async def get_message(broker: AsyncBroker) -> bytes:  # type: ignore
     """
     Get a message from the broker.
 
@@ -56,7 +56,7 @@ async def test_pub_sub_broker(
 
     message1 = worker1_task.result()
     message2 = worker2_task.result()
-    assert message1 == valid_broker_message
+    assert message1 == valid_broker_message.message
     assert message1 == message2
 
 
@@ -81,4 +81,4 @@ async def test_list_queue_broker(
 
     assert worker1_task.done() != worker2_task.done()
     message = worker1_task.result() if worker1_task.done() else worker2_task.result()
-    assert message == valid_broker_message
+    assert message == valid_broker_message.message

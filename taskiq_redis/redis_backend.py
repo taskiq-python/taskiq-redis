@@ -41,7 +41,13 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
 
-        if self.result_ex_time == 0 or self.result_px_time == 0:
+        unavailable_conditions = any(
+            (
+                self.result_ex_time is not None and self.result_ex_time <= 0,
+                self.result_px_time is not None and self.result_px_time <= 0,
+            ),
+        )
+        if unavailable_conditions:
             raise ExpireTimeMustBeMoreThanZeroError(
                 "You must select one expire time param and it must be more than zero.",
             )
@@ -50,9 +56,6 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             raise DuplicateExpireTimeSelectedError(
                 "Choose either result_ex_time or result_px_time.",
             )
-
-        if not self.result_ex_time and not self.result_px_time:
-            self.result_ex_time = 60
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
