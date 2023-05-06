@@ -120,8 +120,11 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
                 result_value = await redis.getdel(
                     name=task_id,
                 )
-
-        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(result_value)
+        
+        if result_value is not None:
+            taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(result_value)
+        else:
+            raise LookupError("Task is pending or not found in redis database")
 
         if not with_logs:
             taskiq_result.log = None
