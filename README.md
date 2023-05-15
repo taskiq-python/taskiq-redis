@@ -18,6 +18,7 @@ pip install taskiq-redis
 Let's see the example with the redis broker and redis async result:
 
 ```python
+# broker.py
 import asyncio
 
 from taskiq_redis import ListQueueBroker, RedisAsyncResultBackend
@@ -42,11 +43,17 @@ async def best_task_ever() -> None:
 
 async def main():
     task = await best_task_ever.kiq()
-    print(await task.get_result())
+    print(await task.wait_result())
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
+
+Launch the workers:
+`taskiq worker broker:broker`
+Then run the main code:
+`python3 broker.py`
 
 ## PubSubBroker and ListQueueBroker configuration
 

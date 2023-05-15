@@ -9,6 +9,7 @@ from taskiq_redis import RedisAsyncResultBackend
 from taskiq_redis.exceptions import (
     DuplicateExpireTimeSelectedError,
     ExpireTimeMustBeMoreThanZeroError,
+    ResultIsMissingError,
 )
 
 _ReturnType = TypeVar("_ReturnType")
@@ -210,7 +211,7 @@ async def test_unsuccess_backend_expire_ex_param(
     )
     await asyncio.sleep(1.1)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ResultIsMissingError):
         await backend.get_result(task_id=task_id)
 
 
@@ -270,5 +271,5 @@ async def test_unsuccess_backend_expire_px_param(
     )
     await asyncio.sleep(1.1)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ResultIsMissingError):
         await backend.get_result(task_id=task_id)

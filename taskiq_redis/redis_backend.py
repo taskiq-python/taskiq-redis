@@ -8,6 +8,7 @@ from taskiq.abc.result_backend import TaskiqResult
 from taskiq_redis.exceptions import (
     DuplicateExpireTimeSelectedError,
     ExpireTimeMustBeMoreThanZeroError,
+    ResultIsMissingError,
 )
 
 _ReturnType = TypeVar("_ReturnType")
@@ -109,6 +110,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
 
         :param task_id: task's id.
         :param with_logs: if True it will download task's logs.
+        :raises ResultIsMissingError: if there is no result when trying to get it.
         :return: task's return value.
         """
         async with Redis(connection_pool=self.redis_pool) as redis:
@@ -120,6 +122,9 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
                 result_value = await redis.getdel(
                     name=task_id,
                 )
+
+        if result_value is None:
+            raise ResultIsMissingError()
 
         taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(result_value)
 

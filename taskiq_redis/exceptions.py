@@ -8,3 +8,7 @@ class DuplicateExpireTimeSelectedError(TaskIQRedisError):
 
 class ExpireTimeMustBeMoreThanZeroError(TaskIQRedisError):
     """Error if two lifetimes are less or equal zero."""
+
+
+class ResultIsMissingError(TaskIQRedisError):
+    """Error if there is no result when trying to get it."""
