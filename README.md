@@ -79,8 +79,8 @@ RedisAsyncResultBackend parameters:
 * `keep_results` - flag to not remove results from Redis after reading.
 * `result_ex_time` - expire time in seconds (by default - not specified)
 * `result_px_time` - expire time in milliseconds (by default - not specified)
-> IMPORTANT: **It is highly recommended to use expire time ​​in RedisAsyncResultBackend**  
-> If you want to add expiration, either `result_ex_time` or `result_px_time` must be set.  
+> IMPORTANT: **It is highly recommended to use expire time ​​in RedisAsyncResultBackend**
+> If you want to add expiration, either `result_ex_time` or `result_px_time` must be set.
 >```python
 ># First variant
 >redis_async_result = RedisAsyncResultBackend(

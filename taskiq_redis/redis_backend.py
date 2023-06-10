@@ -4,6 +4,7 @@ from typing import Dict, Optional, TypeVar, Union
 from redis.asyncio import ConnectionPool, Redis
 from taskiq import AsyncResultBackend
 from taskiq.abc.result_backend import TaskiqResult
+from taskiq.exceptions import ResultGetError
 
 from taskiq_redis.exceptions import (
     DuplicateExpireTimeSelectedError,
@@ -100,7 +101,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         async with Redis(connection_pool=self.redis_pool) as redis:
             return bool(await redis.exists(task_id))
 
-    async def get_result(  # noqa: WPS210
+    async def get_result(
         self,
         task_id: str,
         with_logs: bool = False,
@@ -112,6 +113,8 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param with_logs: if True it will download task's logs.
         :raises ResultIsMissingError: if there is no result when trying to get it.
         :return: task's return value.
+
+        :raises ResultGetError: if result doesn't exist.
         """
         async with Redis(connection_pool=self.redis_pool) as redis:
             if self.keep_results:

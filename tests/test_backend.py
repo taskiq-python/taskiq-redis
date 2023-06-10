@@ -3,7 +3,7 @@ import uuid
 from typing import TypeVar
 
 import pytest
-from taskiq import TaskiqResult
+from taskiq import ResultGetError, TaskiqResult
 
 from taskiq_redis import RedisAsyncResultBackend
 from taskiq_redis.exceptions import (

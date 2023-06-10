@@ -4,6 +4,7 @@ import pytest
 from taskiq import TaskiqResult
 
 from taskiq_redis import RedisAsyncResultBackend
+from taskiq_redis.exceptions import ResultIsMissingError
 
 
 @pytest.mark.anyio
@@ -94,7 +95,7 @@ async def test_remove_results_after_reading(redis_url: str) -> None:
     )
 
     await result_backend.get_result(task_id=task_id)
-    with pytest.raises(Exception):
+    with pytest.raises(ResultIsMissingError):
         await result_backend.get_result(task_id=task_id)
 
 
