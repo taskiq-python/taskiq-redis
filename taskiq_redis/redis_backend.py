@@ -100,7 +100,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         async with Redis(connection_pool=self.redis_pool) as redis:
             return bool(await redis.exists(task_id))
 
-    async def get_result(  # noqa: WPS210
+    async def get_result(
         self,
         task_id: str,
         with_logs: bool = False,
