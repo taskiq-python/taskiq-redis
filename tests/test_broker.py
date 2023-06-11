@@ -1,13 +1,16 @@
 import asyncio
 import uuid
+from typing import Union
 
 import pytest
-from taskiq import AsyncBroker, BrokerMessage
+from taskiq import AckableMessage, AsyncBroker, BrokerMessage
 
 from taskiq_redis import ListQueueBroker, PubSubBroker
 
 
-async def get_message(broker: AsyncBroker) -> bytes:  # type: ignore
+async def get_message(  # type: ignore
+    broker: AsyncBroker,
+) -> Union[bytes, AckableMessage]:
     """
     Get a message from the broker.
 
