@@ -16,7 +16,7 @@ class BaseRedisBroker(AsyncBroker):
 
     def __init__(
         self,
-        url: Optional[str] = None,
+        url: str,
         task_id_generator: Optional[Callable[[], str]] = None,
         result_backend: Optional[AsyncResultBackend[_T]] = None,
         queue_name: str = "taskiq",
