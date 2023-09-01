@@ -8,6 +8,12 @@ from taskiq import AckableMessage, AsyncBroker, BrokerMessage
 from taskiq_redis import ListQueueBroker, PubSubBroker
 
 
+def test_no_url_should_raise_typeerror() -> None:
+    """Test that url is expected."""
+    with pytest.raises(TypeError):
+        ListQueueBroker()  # type: ignore
+
+
 async def get_message(  # type: ignore
     broker: AsyncBroker,
 ) -> Union[bytes, AckableMessage]:
