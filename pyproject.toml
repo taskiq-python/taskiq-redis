@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "taskiq-redis"
-version = "0.4.0"
+version = "0.5.0"
 description = "Redis integration for taskiq"
 authors = ["taskiq-team <taskiq@norely.com>"]
 readme = "README.md"
