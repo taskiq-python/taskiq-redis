@@ -37,7 +37,7 @@ def valid_broker_message() -> BrokerMessage:
     return BrokerMessage(
         task_id=uuid.uuid4().hex,
         task_name=uuid.uuid4().hex,
-        message="my_msg",
+        message=b"my_msg",
         labels={
             "label1": "val1",
         },
