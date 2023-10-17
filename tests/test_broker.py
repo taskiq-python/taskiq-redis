@@ -14,7 +14,7 @@ def test_no_url_should_raise_typeerror() -> None:
         ListQueueBroker()  # type: ignore
 
 
-async def get_message(  # type: ignore
+async def get_message(
     broker: AsyncBroker,
 ) -> Union[bytes, AckableMessage]:
     """
@@ -23,8 +23,9 @@ async def get_message(  # type: ignore
     :param broker: async message broker.
     :return: first message from listen method.
     """
-    async for message in broker.listen():  # noqa: WPS328
+    async for message in broker.listen():
         return message
+    return b""
 
 
 @pytest.fixture

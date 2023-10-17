@@ -35,7 +35,7 @@ async def test_set_result_success(redis_url: str) -> None:
     )
     assert fetched_result.log == "My Log"
     assert fetched_result.return_value == 11
-    assert fetched_result.execution_time == 112.2  # noqa: WPS459
+    assert fetched_result.execution_time == 112.2
     assert fetched_result.is_err
 
 
@@ -67,7 +67,7 @@ async def test_fetch_without_logs(redis_url: str) -> None:
     )
     assert fetched_result.log is None
     assert fetched_result.return_value == 11
-    assert fetched_result.execution_time == 112.2  # noqa: WPS459
+    assert fetched_result.execution_time == 112.2
     assert fetched_result.is_err
 
 
