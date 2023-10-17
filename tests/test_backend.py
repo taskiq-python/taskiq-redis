@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import pytest
 from taskiq import TaskiqResult
@@ -34,7 +34,7 @@ def task_id() -> str:
 
 
 @pytest.fixture
-def default_taskiq_result() -> TaskiqResult[_ReturnType]:
+def default_taskiq_result() -> TaskiqResult[Any]:
     """
     Generates default TaskiqResult.
 
@@ -49,7 +49,7 @@ def default_taskiq_result() -> TaskiqResult[_ReturnType]:
 
 
 @pytest.fixture
-def custom_taskiq_result() -> TaskiqResult[_ReturnType]:
+def custom_taskiq_result() -> TaskiqResult[Any]:
     """
     Generates custom TaskiqResult.
 

@@ -6,7 +6,7 @@ from taskiq.abc.broker import AsyncBroker
 from taskiq.abc.result_backend import AsyncResultBackend
 from taskiq.message import BrokerMessage
 
-_T = TypeVar("_T")  # noqa: WPS111
+_T = TypeVar("_T")
 
 logger = getLogger("taskiq.redis_broker")
 
@@ -109,7 +109,7 @@ class ListQueueBroker(BaseRedisBroker):
         """
         redis_brpop_data_position = 1
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            while True:  # noqa: WPS457
+            while True:
                 yield (await redis_conn.brpop(self.queue_name))[
                     redis_brpop_data_position
                 ]

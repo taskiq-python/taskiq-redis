@@ -23,7 +23,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         keep_results: bool = True,
         result_ex_time: Optional[int] = None,
         result_px_time: Optional[int] = None,
-    ):
+    ) -> None:
         """
         Constructs a new result backend.
 
@@ -87,7 +87,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             redis_set_params["px"] = self.result_px_time
 
         async with Redis(connection_pool=self.redis_pool) as redis:
-            await redis.set(**redis_set_params)
+            await redis.set(**redis_set_params)  # type: ignore
 
     async def is_result_ready(self, task_id: str) -> bool:
         """
@@ -124,9 +124,11 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
                 )
 
         if result_value is None:
-            raise ResultIsMissingError()
+            raise ResultIsMissingError
 
-        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(result_value)
+        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(  # noqa: S301
+            result_value,
+        )
 
         if not with_logs:
             taskiq_result.log = None
