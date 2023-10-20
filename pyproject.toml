@@ -26,7 +26,7 @@ keywords = [
 
 [tool.poetry.dependencies]
 python = "^3.8.1"
-taskiq = "^0"
+taskiq = ">=0.10.1,<1"
 redis = "^5"
 
 [tool.poetry.group.dev.dependencies]
@@ -124,7 +124,7 @@ convention = "pep257"
 ignore-decorators = ["typing.overload"]
 
 [tool.ruff.pylint]
-allow-magic-value-types = ["int", "str", "float", "tuple"]
+allow-magic-value-types = ["int", "str", "float"]
 
 [tool.ruff.flake8-bugbear]
 extend-immutable-calls = ["taskiq_dependencies.Depends", "taskiq.TaskiqDepends"]
