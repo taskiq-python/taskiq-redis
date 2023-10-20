@@ -35,8 +35,9 @@ async def test_set_result_success(redis_url: str) -> None:
     )
     assert fetched_result.log == "My Log"
     assert fetched_result.return_value == 11
-    assert fetched_result.execution_time == 112.2  # noqa: WPS459
+    assert fetched_result.execution_time == 112.2
     assert fetched_result.is_err
+    await result_backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -67,8 +68,9 @@ async def test_fetch_without_logs(redis_url: str) -> None:
     )
     assert fetched_result.log is None
     assert fetched_result.return_value == 11
-    assert fetched_result.execution_time == 112.2  # noqa: WPS459
+    assert fetched_result.execution_time == 112.2
     assert fetched_result.is_err
+    await result_backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -98,6 +100,8 @@ async def test_remove_results_after_reading(redis_url: str) -> None:
     with pytest.raises(ResultIsMissingError):
         await result_backend.get_result(task_id=task_id)
 
+    await result_backend.shutdown()
+
 
 @pytest.mark.anyio
 async def test_keep_results_after_reading(redis_url: str) -> None:
@@ -125,3 +129,4 @@ async def test_keep_results_after_reading(redis_url: str) -> None:
     res1 = await result_backend.get_result(task_id=task_id)
     res2 = await result_backend.get_result(task_id=task_id)
     assert res1 == res2
+    await result_backend.shutdown()

@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import pytest
 from taskiq import TaskiqResult
@@ -34,7 +34,7 @@ def task_id() -> str:
 
 
 @pytest.fixture
-def default_taskiq_result() -> TaskiqResult[_ReturnType]:
+def default_taskiq_result() -> TaskiqResult[Any]:
     """
     Generates default TaskiqResult.
 
@@ -49,7 +49,7 @@ def default_taskiq_result() -> TaskiqResult[_ReturnType]:
 
 
 @pytest.fixture
-def custom_taskiq_result() -> TaskiqResult[_ReturnType]:
+def custom_taskiq_result() -> TaskiqResult[Any]:
     """
     Generates custom TaskiqResult.
 
@@ -86,6 +86,7 @@ async def test_success_backend_default_result(
     result = await backend.get_result(task_id=task_id)
 
     assert result == default_taskiq_result
+    await backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -117,6 +118,7 @@ async def test_success_backend_custom_result(
     assert result.is_err == custom_taskiq_result.is_err
     assert result.execution_time == custom_taskiq_result.execution_time
     assert result.log == custom_taskiq_result.log
+    await backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -183,6 +185,7 @@ async def test_success_backend_expire_ex_param(
     result = await backend.get_result(task_id=task_id)
 
     assert result == default_taskiq_result
+    await backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -213,6 +216,7 @@ async def test_unsuccess_backend_expire_ex_param(
 
     with pytest.raises(ResultIsMissingError):
         await backend.get_result(task_id=task_id)
+    await backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -243,6 +247,7 @@ async def test_success_backend_expire_px_param(
     result = await backend.get_result(task_id=task_id)
 
     assert result == default_taskiq_result
+    await backend.shutdown()
 
 
 @pytest.mark.anyio
@@ -273,3 +278,4 @@ async def test_unsuccess_backend_expire_px_param(
 
     with pytest.raises(ResultIsMissingError):
         await backend.get_result(task_id=task_id)
+    await backend.shutdown()
