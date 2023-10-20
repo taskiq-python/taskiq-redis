@@ -68,6 +68,7 @@ async def test_pub_sub_broker(
     message2 = worker2_task.result()
     assert message1 == valid_broker_message.message
     assert message1 == message2
+    await broker.shutdown()
 
 
 @pytest.mark.anyio
@@ -92,3 +93,6 @@ async def test_list_queue_broker(
     assert worker1_task.done() != worker2_task.done()
     message = worker1_task.result() if worker1_task.done() else worker2_task.result()
     assert message == valid_broker_message.message
+    worker1_task.cancel()
+    worker2_task.cancel()
+    await broker.shutdown()
