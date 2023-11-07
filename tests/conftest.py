@@ -25,7 +25,7 @@ def redis_url() -> str:
 
     :return: URL string.
     """
-    return os.environ.get("TEST_REDIS_URL", "redis://localhost")
+    return os.environ.get("TEST_REDIS_URL", "redis://localhost:7000")
 
 
 @pytest.fixture
@@ -39,4 +39,4 @@ def redis_cluster_url() -> str:
 
     :return: URL string.
     """
-    return os.environ.get("TEST_REDIS_CLUSTER_URL", "redis://localhost:7000")
+    return os.environ.get("TEST_REDIS_CLUSTER_URL", "redis://localhost:7001")
