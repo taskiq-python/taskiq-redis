@@ -1,0 +1,60 @@
+version: '3.2'
+
+services:
+  redis:
+    image: bitnami/redis:6.2.5
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    ports:
+      - 7000:6379
+  redis-node-0:
+    image: docker.io/bitnami/redis-cluster:7.2
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_NODES: "redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5"
+
+  redis-node-1:
+    image: docker.io/bitnami/redis-cluster:7.2
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_NODES: "redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5"
+
+  redis-node-2:
+    image: docker.io/bitnami/redis-cluster:7.2
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_NODES: "redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5"
+
+  redis-node-3:
+    image: docker.io/bitnami/redis-cluster:7.2
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_NODES: "redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5"
+
+  redis-node-4:
+    image: docker.io/bitnami/redis-cluster:7.2
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_NODES: "redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5"
+
+  redis-node-5:
+    image: docker.io/bitnami/redis-cluster:7.2
+    depends_on:
+      - redis-node-0
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_NODES: "redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5"
+      REDIS_CLUSTER_REPLICAS: 1
+      REDIS_CLUSTER_CREATOR: "yes"
+    ports:
+      - 7001:6379
