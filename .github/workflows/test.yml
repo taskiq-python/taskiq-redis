@@ -30,24 +30,14 @@ jobs:
       - name: Run lint check
         run: poetry run pre-commit run -a ${{ matrix.cmd }}
   pytest:
-    services:
-      redis:
-        image: bitnami/redis:6.2.5
-        env:
-          ALLOW_EMPTY_PASSWORD: "yes"
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=30
-        ports:
-          - 6379:6379
     strategy:
       matrix:
         py_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Redis instance and Redis cluster
+        run: docker-compose up -d
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
