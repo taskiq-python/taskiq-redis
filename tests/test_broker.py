@@ -5,7 +5,7 @@ from typing import Union
 import pytest
 from taskiq import AckableMessage, AsyncBroker, BrokerMessage
 
-from taskiq_redis import ListQueueBroker, PubSubBroker
+from taskiq_redis import ListQueueBroker, ListQueueClusterBroker, PubSubBroker
 
 
 def test_no_url_should_raise_typeerror() -> None:
@@ -95,4 +95,31 @@ async def test_list_queue_broker(
     assert message == valid_broker_message.message
     worker1_task.cancel()
     worker2_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_list_queue_cluster_broker(
+    valid_broker_message: BrokerMessage,
+    redis_cluster_url: str,
+) -> None:
+    """
+    Test that messages are published and read correctly by ListQueueClusterBroker.
+
+    We create two workers that listen and send a message to them.
+    Expect only one worker to receive the same message we sent.
+    """
+    broker = ListQueueClusterBroker(
+        url=redis_cluster_url,
+        queue_name=uuid.uuid4().hex,
+    )
+    worker_task = asyncio.create_task(get_message(broker))
+    await asyncio.sleep(0.3)
+
+    await broker.kick(valid_broker_message)
+    await asyncio.sleep(0.3)
+
+    assert worker_task.done()
+    assert worker_task.result() == valid_broker_message.message
+    worker_task.cancel()
     await broker.shutdown()
