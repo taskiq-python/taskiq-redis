@@ -60,7 +60,7 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
 
         :param message: message to append.
         """
-        await self.redis.lpush(self.queue_name, message.message)
+        await self.redis.lpush(self.queue_name, message.message)  # type: ignore[attr-defined]
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -73,6 +73,5 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
         """
         redis_brpop_data_position = 1
         while True:
-            yield (await self.redis.brpop([self.queue_name]))[
-                redis_brpop_data_position
-            ]
+            value = await self.redis.brpop([self.queue_name])  # type: ignore[attr-defined]
+            yield value[redis_brpop_data_position]
