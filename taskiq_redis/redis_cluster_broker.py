@@ -1,11 +1,8 @@
-from typing import Any, AsyncGenerator, Optional, TypeVar
+from typing import Any, AsyncGenerator
 
 from redis.asyncio import RedisCluster
 from taskiq.abc.broker import AsyncBroker
-from taskiq.abc.result_backend import AsyncResultBackend
 from taskiq.message import BrokerMessage
-
-_T = TypeVar("_T")
 
 
 class BaseRedisClusterBroker(AsyncBroker):
@@ -14,7 +11,6 @@ class BaseRedisClusterBroker(AsyncBroker):
     def __init__(
         self,
         url: str,
-        result_backend: Optional[AsyncResultBackend[_T]] = None,
         queue_name: str = "taskiq",
         max_connection_pool_size: int = 2**31,
         **connection_kwargs: Any,
@@ -23,12 +19,11 @@ class BaseRedisClusterBroker(AsyncBroker):
         Constructs a new broker.
 
         :param url: url to redis.
-        :param result_backend: custom result backend.
         :param queue_name: name for a list in redis.
         :param max_connection_pool_size: maximum number of connections in pool.
         :param connection_kwargs: additional arguments for aio-redis ConnectionPool.
         """
-        super().__init__(result_backend=result_backend)
+        super().__init__()
 
         self.redis: RedisCluster[bytes] = RedisCluster.from_url(
             url=url,
