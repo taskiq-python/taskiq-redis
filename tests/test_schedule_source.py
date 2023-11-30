@@ -11,7 +11,7 @@ async def test_set_schedule(redis_url: str) -> None:
     prefix = uuid.uuid4().hex
     source = RedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
-        "test_task",
+        task_name="test_task",
         labels={},
         args=[],
         kwargs={},
@@ -28,7 +28,7 @@ async def test_delete_schedule(redis_url: str) -> None:
     prefix = uuid.uuid4().hex
     source = RedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
-        "test_task",
+        task_name="test_task",
         labels={},
         args=[],
         kwargs={},
@@ -49,7 +49,7 @@ async def test_post_run_cron(redis_url: str) -> None:
     prefix = uuid.uuid4().hex
     source = RedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
-        "test_task",
+        task_name="test_task",
         labels={},
         args=[],
         kwargs={},
