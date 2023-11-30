@@ -1,9 +1,9 @@
-import dataclasses
 from typing import Any, List, Optional
 
 from redis.asyncio import ConnectionPool, Redis
 from taskiq import ScheduleSource
 from taskiq.abc.serializer import TaskiqSerializer
+from taskiq.compat import model_dump, model_validate
 from taskiq.scheduler.scheduled_task import ScheduledTask
 
 from taskiq_redis.serializer import PickleSerializer
@@ -60,7 +60,7 @@ class RedisScheduleSource(ScheduleSource):
         async with Redis(connection_pool=self.connection_pool) as redis:
             await redis.set(
                 f"{self.prefix}:{schedule.schedule_id}",
-                self.serializer.dumpb(dataclasses.asdict(schedule)),
+                self.serializer.dumpb(model_dump(schedule)),
             )
 
     async def get_schedules(self) -> List[ScheduledTask]:
@@ -82,7 +82,7 @@ class RedisScheduleSource(ScheduleSource):
             if buffer:
                 schedules.extend(await redis.mget(buffer))
         return [
-            ScheduledTask(**self.serializer.loadb(schedule))
+            model_validate(ScheduledTask, self.serializer.loadb(schedule))
             for schedule in schedules
             if schedule
         ]
