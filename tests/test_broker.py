@@ -72,6 +72,29 @@ async def test_pub_sub_broker(
 
 
 @pytest.mark.anyio
+async def test_pub_sub_broker_max_connections(
+    valid_broker_message: BrokerMessage,
+    redis_url: str,
+) -> None:
+    """Test PubSubBroker with connection limit set."""
+    broker = PubSubBroker(
+        url=redis_url,
+        queue_name=uuid.uuid4().hex,
+        max_connection_pool_size=4,
+        timeout=1,
+    )
+    worker_tasks = [asyncio.create_task(get_message(broker)) for _ in range(3)]
+    await asyncio.sleep(0.3)
+
+    await asyncio.gather(*[broker.kick(valid_broker_message) for _ in range(50)])
+    await asyncio.sleep(0.3)
+
+    for worker in worker_tasks:
+        worker.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
 async def test_list_queue_broker(
     valid_broker_message: BrokerMessage,
     redis_url: str,
@@ -95,6 +118,29 @@ async def test_list_queue_broker(
     assert message == valid_broker_message.message
     worker1_task.cancel()
     worker2_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_list_queue_broker_max_connections(
+    valid_broker_message: BrokerMessage,
+    redis_url: str,
+) -> None:
+    """Test ListQueueBroker with connection limit set."""
+    broker = ListQueueBroker(
+        url=redis_url,
+        queue_name=uuid.uuid4().hex,
+        max_connection_pool_size=4,
+        timeout=1,
+    )
+    worker_tasks = [asyncio.create_task(get_message(broker)) for _ in range(3)]
+    await asyncio.sleep(0.3)
+
+    await asyncio.gather(*[broker.kick(valid_broker_message) for _ in range(50)])
+    await asyncio.sleep(0.3)
+
+    for worker in worker_tasks:
+        worker.cancel()
     await broker.shutdown()
 
 

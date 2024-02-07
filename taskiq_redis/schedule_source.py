@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 
-from redis.asyncio import ConnectionPool, Redis, RedisCluster
+from redis.asyncio import BlockingConnectionPool, ConnectionPool, Redis, RedisCluster
 from taskiq import ScheduleSource
 from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.compat import model_dump, model_validate
@@ -22,7 +22,7 @@ class RedisScheduleSource(ScheduleSource):
         This is how many keys will be fetched at once.
     :param max_connection_pool_size: maximum number of connections in pool.
     :param serializer: serializer for data.
-    :param connection_kwargs: additional arguments for aio-redis ConnectionPool.
+    :param connection_kwargs: additional arguments for redis BlockingConnectionPool.
     """
 
     def __init__(
@@ -35,7 +35,7 @@ class RedisScheduleSource(ScheduleSource):
         **connection_kwargs: Any,
     ) -> None:
         self.prefix = prefix
-        self.connection_pool: ConnectionPool = ConnectionPool.from_url(
+        self.connection_pool: ConnectionPool = BlockingConnectionPool.from_url(
             url=url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
