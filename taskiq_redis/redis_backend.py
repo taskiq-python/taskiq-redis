@@ -1,7 +1,7 @@
 import pickle
-from typing import Dict, Optional, TypeVar, Union
+from typing import Any, Dict, Optional, TypeVar, Union
 
-from redis.asyncio import ConnectionPool, Redis
+from redis.asyncio import BlockingConnectionPool, Redis
 from redis.asyncio.cluster import RedisCluster
 from taskiq import AsyncResultBackend
 from taskiq.abc.result_backend import TaskiqResult
@@ -24,6 +24,8 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         keep_results: bool = True,
         result_ex_time: Optional[int] = None,
         result_px_time: Optional[int] = None,
+        max_connection_pool_size: Optional[int] = None,
+        **connection_kwargs: Any,
     ) -> None:
         """
         Constructs a new result backend.
@@ -32,13 +34,19 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param keep_results: flag to not remove results from Redis after reading.
         :param result_ex_time: expire time in seconds for result.
         :param result_px_time: expire time in milliseconds for result.
+        :param max_connection_pool_size: maximum number of connections in pool.
+        :param connection_kwargs: additional arguments for redis BlockingConnectionPool.
 
         :raises DuplicateExpireTimeSelectedError: if result_ex_time
             and result_px_time are selected.
         :raises ExpireTimeMustBeMoreThanZeroError: if result_ex_time
             and result_px_time are equal zero.
         """
-        self.redis_pool = ConnectionPool.from_url(redis_url)
+        self.redis_pool = BlockingConnectionPool.from_url(
+            url=redis_url,
+            max_connections=max_connection_pool_size,
+            **connection_kwargs,
+        )
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
@@ -146,6 +154,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         keep_results: bool = True,
         result_ex_time: Optional[int] = None,
         result_px_time: Optional[int] = None,
+        **connection_kwargs: Any,
     ) -> None:
         """
         Constructs a new result backend.
@@ -154,13 +163,17 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :param keep_results: flag to not remove results from Redis after reading.
         :param result_ex_time: expire time in seconds for result.
         :param result_px_time: expire time in milliseconds for result.
+        :param connection_kwargs: additional arguments for RedisCluster.
 
         :raises DuplicateExpireTimeSelectedError: if result_ex_time
             and result_px_time are selected.
         :raises ExpireTimeMustBeMoreThanZeroError: if result_ex_time
             and result_px_time are equal zero.
         """
-        self.redis: RedisCluster[bytes] = RedisCluster.from_url(redis_url)
+        self.redis: RedisCluster[bytes] = RedisCluster.from_url(
+            redis_url,
+            **connection_kwargs,
+        )
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
