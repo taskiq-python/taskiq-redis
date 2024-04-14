@@ -10,6 +10,7 @@ from taskiq_redis.redis_sentinel_broker import ListQueueSentinelBroker
 from taskiq_redis.schedule_source import (
     RedisClusterScheduleSource,
     RedisScheduleSource,
+    RedisSentinelScheduleSource,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "ListQueueSentinelBroker",
     "RedisScheduleSource",
     "RedisClusterScheduleSource",
+    "RedisSentinelScheduleSource",
 ]
