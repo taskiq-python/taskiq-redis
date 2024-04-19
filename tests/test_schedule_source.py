@@ -1,3 +1,4 @@
+import asyncio
 import datetime as dt
 import uuid
 
@@ -106,6 +107,18 @@ async def test_buffer(redis_url: str) -> None:
     assert schedule1 in schedules
     assert schedule2 in schedules
     await source.shutdown()
+
+
+@pytest.mark.anyio
+async def test_max_connections(redis_url: str) -> None:
+    prefix = uuid.uuid4().hex
+    source = RedisScheduleSource(
+        redis_url,
+        prefix=prefix,
+        max_connection_pool_size=1,
+        timeout=3,
+    )
+    await asyncio.gather(*[source.get_schedules() for _ in range(10)])
 
 
 @pytest.mark.anyio

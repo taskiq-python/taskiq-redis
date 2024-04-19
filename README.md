@@ -71,6 +71,9 @@ Brokers parameters:
 * `result_backend` - custom result backend.
 * `queue_name` - name of the pub/sub channel in redis.
 * `max_connection_pool_size` - maximum number of connections in pool.
+* Any other keyword arguments are passed to `redis.asyncio.BlockingConnectionPool`.
+  Notably, you can use `timeout` to set custom timeout in seconds for reconnects
+  (or set it to `None` to try reconnects indefinitely).
 
 ## RedisAsyncResultBackend configuration
 
@@ -79,6 +82,9 @@ RedisAsyncResultBackend parameters:
 * `keep_results` - flag to not remove results from Redis after reading.
 * `result_ex_time` - expire time in seconds (by default - not specified)
 * `result_px_time` - expire time in milliseconds (by default - not specified)
+* Any other keyword arguments are passed to `redis.asyncio.BlockingConnectionPool`.
+  Notably, you can use `timeout` to set custom timeout in seconds for reconnects
+  (or set it to `None` to try reconnects indefinitely).
 > IMPORTANT: **It is highly recommended to use expire time ​​in RedisAsyncResultBackend**
 > If you want to add expiration, either `result_ex_time` or `result_px_time` must be set.
 >```python

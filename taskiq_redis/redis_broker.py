@@ -1,7 +1,7 @@
 from logging import getLogger
 from typing import Any, AsyncGenerator, Callable, Optional, TypeVar
 
-from redis.asyncio import ConnectionPool, Redis
+from redis.asyncio import BlockingConnectionPool, ConnectionPool, Redis
 from taskiq.abc.broker import AsyncBroker
 from taskiq.abc.result_backend import AsyncResultBackend
 from taskiq.message import BrokerMessage
@@ -31,14 +31,16 @@ class BaseRedisBroker(AsyncBroker):
         :param result_backend: custom result backend.
         :param queue_name: name for a list in redis.
         :param max_connection_pool_size: maximum number of connections in pool.
-        :param connection_kwargs: additional arguments for aio-redis ConnectionPool.
+            Each worker opens its own connection. Therefore this value has to be
+            at least number of workers + 1.
+        :param connection_kwargs: additional arguments for redis BlockingConnectionPool.
         """
         super().__init__(
             result_backend=result_backend,
             task_id_generator=task_id_generator,
         )
 
-        self.connection_pool: ConnectionPool = ConnectionPool.from_url(
+        self.connection_pool: ConnectionPool = BlockingConnectionPool.from_url(
             url=url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
@@ -60,8 +62,9 @@ class PubSubBroker(BaseRedisBroker):
 
         :param message: message to send.
         """
+        queue_name = message.labels.get("queue_name") or self.queue_name
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            await redis_conn.publish(self.queue_name, message.message)
+            await redis_conn.publish(queue_name, message.message)
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -95,8 +98,9 @@ class ListQueueBroker(BaseRedisBroker):
 
         :param message: message to append.
         """
+        queue_name = message.labels.get("queue_name") or self.queue_name
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            await redis_conn.lpush(self.queue_name, message.message)
+            await redis_conn.lpush(queue_name, message.message)
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
