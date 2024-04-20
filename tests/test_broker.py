@@ -184,7 +184,7 @@ async def test_pub_sub_sentinel_broker(
     redis_sentinel_master_name: str,
 ) -> None:
     """
-    Test that messages are published and read correctly by PubSubBroker.
+    Test that messages are published and read correctly by PubSubSentinelBroker.
 
     We create two workers that listen and send a message to them.
     Expect both workers to receive the same message we sent.

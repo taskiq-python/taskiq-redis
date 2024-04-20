@@ -67,7 +67,7 @@ class BaseSentinelBroker(AsyncBroker):
 
 
 class PubSubSentinelBroker(BaseSentinelBroker):
-    """Broker that works with Redis and broadcasts tasks to all workers."""
+    """Broker that works with Sentinel and broadcasts tasks to all workers."""
 
     async def kick(self, message: BrokerMessage) -> None:
         """
