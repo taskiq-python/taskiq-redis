@@ -17,12 +17,14 @@ from redis.asyncio import BlockingConnectionPool, Redis, Sentinel
 from redis.asyncio.cluster import RedisCluster
 from taskiq import AsyncResultBackend
 from taskiq.abc.result_backend import TaskiqResult
+from taskiq.abc.serializer import TaskiqSerializer
 
 from taskiq_redis.exceptions import (
     DuplicateExpireTimeSelectedError,
     ExpireTimeMustBeMoreThanZeroError,
     ResultIsMissingError,
 )
+from taskiq_redis.serializer import PickleSerializer
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -303,6 +305,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         result_px_time: Optional[int] = None,
         min_other_sentinels: int = 0,
         sentinel_kwargs: Optional[Any] = None,
+        serializer: Optional[TaskiqSerializer] = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -328,6 +331,9 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
             **connection_kwargs,
         )
         self.master_name = master_name
+        if serializer is None:
+            serializer = PickleSerializer()
+        self.serializer = serializer
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
@@ -369,7 +375,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         """
         redis_set_params: Dict[str, Union[str, bytes, int]] = {
             "name": task_id,
-            "value": pickle.dumps(result),
+            "value": self.serializer.dumpb(result),
         }
         if self.result_ex_time:
             redis_set_params["ex"] = self.result_ex_time
