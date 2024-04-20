@@ -66,6 +66,40 @@ class BaseSentinelBroker(AsyncBroker):
             yield redis_conn
 
 
+class PubSubSentinelBroker(BaseSentinelBroker):
+    """Broker that works with Redis and broadcasts tasks to all workers."""
+
+    async def kick(self, message: BrokerMessage) -> None:
+        """
+        Publish message over PUBSUB channel.
+
+        :param message: message to send.
+        """
+        queue_name = message.labels.get("queue_name") or self.queue_name
+        async with self._acquire_master_conn() as redis_conn:
+            await redis_conn.publish(queue_name, message.message)
+
+    async def listen(self) -> AsyncGenerator[bytes, None]:
+        """
+        Listen redis queue for new messages.
+
+        This function listens to the pubsub channel
+        and yields all messages with proper types.
+
+        :yields: broker messages.
+        """
+        async with self._acquire_master_conn() as redis_conn:
+            redis_pubsub_channel = redis_conn.pubsub()
+            await redis_pubsub_channel.subscribe(self.queue_name)
+            async for message in redis_pubsub_channel.listen():
+                if not message:
+                    continue
+                if message["type"] != "message":
+                    logger.debug("Received non-message from redis: %s", message)
+                    continue
+                yield message["data"]
+
+
 class ListQueueSentinelBroker(BaseSentinelBroker):
     """Broker that works with Sentinel and distributes tasks between workers."""
 

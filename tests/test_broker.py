@@ -10,6 +10,7 @@ from taskiq_redis import (
     ListQueueClusterBroker,
     ListQueueSentinelBroker,
     PubSubBroker,
+    PubSubSentinelBroker,
 )
 
 
@@ -173,6 +174,37 @@ async def test_list_queue_cluster_broker(
     assert worker_task.done()
     assert worker_task.result() == valid_broker_message.message
     worker_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_pub_sub_sentinel_broker(
+    valid_broker_message: BrokerMessage,
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    """
+    Test that messages are published and read correctly by PubSubBroker.
+
+    We create two workers that listen and send a message to them.
+    Expect both workers to receive the same message we sent.
+    """
+    broker = PubSubSentinelBroker(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        queue_name=uuid.uuid4().hex,
+    )
+    worker1_task = asyncio.create_task(get_message(broker))
+    worker2_task = asyncio.create_task(get_message(broker))
+    await asyncio.sleep(0.3)
+
+    await broker.kick(valid_broker_message)
+    await asyncio.sleep(0.3)
+
+    message1 = worker1_task.result()
+    message2 = worker2_task.result()
+    assert message1 == valid_broker_message.message
+    assert message1 == message2
     await broker.shutdown()
 
 
