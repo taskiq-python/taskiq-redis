@@ -1,7 +1,8 @@
+import sys
 from logging import getLogger
-from typing import Any, AsyncGenerator, Callable, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Optional, TypeVar
 
-from redis.asyncio import BlockingConnectionPool, ConnectionPool, Redis
+from redis.asyncio import BlockingConnectionPool, Connection, Redis
 from taskiq.abc.broker import AsyncBroker
 from taskiq.abc.result_backend import AsyncResultBackend
 from taskiq.message import BrokerMessage
@@ -9,6 +10,16 @@ from taskiq.message import BrokerMessage
 _T = TypeVar("_T")
 
 logger = getLogger("taskiq.redis_broker")
+
+if sys.version_info >= (3, 10):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]
+else:
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
 
 
 class BaseRedisBroker(AsyncBroker):
@@ -40,7 +51,7 @@ class BaseRedisBroker(AsyncBroker):
             task_id_generator=task_id_generator,
         )
 
-        self.connection_pool: ConnectionPool = BlockingConnectionPool.from_url(
+        self.connection_pool: _BlockingConnectionPool = BlockingConnectionPool.from_url(
             url=url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
