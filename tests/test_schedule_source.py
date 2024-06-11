@@ -1,11 +1,16 @@
 import asyncio
 import datetime as dt
 import uuid
+from typing import List, Tuple
 
 import pytest
 from taskiq import ScheduledTask
 
-from taskiq_redis import RedisClusterScheduleSource, RedisScheduleSource
+from taskiq_redis import (
+    RedisClusterScheduleSource,
+    RedisScheduleSource,
+    RedisSentinelScheduleSource,
+)
 
 
 @pytest.mark.anyio
@@ -221,6 +226,143 @@ async def test_cluster_get_schedules(redis_cluster_url: str) -> None:
     )
     schedule2 = ScheduledTask(
         schedule_id=r"id-{4Rs}",
+        task_name="test_task2",
+        labels={},
+        args=[],
+        kwargs={},
+        cron="* * * * *",
+    )
+    await source.add_schedule(schedule1)
+    await source.add_schedule(schedule2)
+    schedules = await source.get_schedules()
+    assert len(schedules) == 2
+    assert schedule1 in schedules
+    assert schedule2 in schedules
+    await source.shutdown()
+
+
+@pytest.mark.anyio
+async def test_sentinel_set_schedule(
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    prefix = uuid.uuid4().hex
+    source = RedisSentinelScheduleSource(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        prefix=prefix,
+    )
+    schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        cron="* * * * *",
+    )
+    await source.add_schedule(schedule)
+    schedules = await source.get_schedules()
+    assert schedules == [schedule]
+    await source.shutdown()
+
+
+@pytest.mark.anyio
+async def test_sentinel_delete_schedule(
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    prefix = uuid.uuid4().hex
+    source = RedisSentinelScheduleSource(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        prefix=prefix,
+    )
+    schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        cron="* * * * *",
+    )
+    await source.add_schedule(schedule)
+    schedules = await source.get_schedules()
+    assert schedules == [schedule]
+    await source.delete_schedule(schedule.schedule_id)
+    schedules = await source.get_schedules()
+    # Schedules are empty.
+    assert not schedules
+    await source.shutdown()
+
+
+@pytest.mark.anyio
+async def test_sentinel_post_run_cron(
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    prefix = uuid.uuid4().hex
+    source = RedisSentinelScheduleSource(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        prefix=prefix,
+    )
+    schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        cron="* * * * *",
+    )
+    await source.add_schedule(schedule)
+    assert await source.get_schedules() == [schedule]
+    await source.post_send(schedule)
+    assert await source.get_schedules() == [schedule]
+    await source.shutdown()
+
+
+@pytest.mark.anyio
+async def test_sentinel_post_run_time(
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    prefix = uuid.uuid4().hex
+    source = RedisSentinelScheduleSource(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        prefix=prefix,
+    )
+    schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        time=dt.datetime(2000, 1, 1),
+    )
+    await source.add_schedule(schedule)
+    assert await source.get_schedules() == [schedule]
+    await source.post_send(schedule)
+    assert await source.get_schedules() == []
+    await source.shutdown()
+
+
+@pytest.mark.anyio
+async def test_sentinel_buffer(
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    prefix = uuid.uuid4().hex
+    source = RedisSentinelScheduleSource(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        prefix=prefix,
+        buffer_size=1,
+    )
+    schedule1 = ScheduledTask(
+        task_name="test_task1",
+        labels={},
+        args=[],
+        kwargs={},
+        cron="* * * * *",
+    )
+    schedule2 = ScheduledTask(
         task_name="test_task2",
         labels={},
         args=[],
