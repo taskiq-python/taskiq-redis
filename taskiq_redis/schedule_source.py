@@ -117,7 +117,6 @@ class RedisClusterScheduleSource(ScheduleSource):
         self,
         url: str,
         prefix: str = "schedule",
-        buffer_size: int = 50,
         serializer: Optional[TaskiqSerializer] = None,
         **connection_kwargs: Any,
     ) -> None:
@@ -126,7 +125,6 @@ class RedisClusterScheduleSource(ScheduleSource):
             url,
             **connection_kwargs,
         )
-        self.buffer_size = buffer_size
         if serializer is None:
             serializer = PickleSerializer()
         self.serializer = serializer
@@ -156,19 +154,14 @@ class RedisClusterScheduleSource(ScheduleSource):
         :return: list of schedules.
         """
         schedules = []
-        buffer = []
         async for key in self.redis.scan_iter(f"{self.prefix}:*"):  # type: ignore[attr-defined]
-            buffer.append(key)
-            if len(buffer) >= self.buffer_size:
-                schedules.extend(await self.redis.mget(buffer))  # type: ignore[attr-defined]
-                buffer = []
-        if buffer:
-            schedules.extend(await self.redis.mget(buffer))  # type: ignore[attr-defined]
-        return [
-            model_validate(ScheduledTask, self.serializer.loadb(schedule))
-            for schedule in schedules
-            if schedule
-        ]
+            raw_schedule = await self.redis.get(key)  # type: ignore[attr-defined]
+            parsed_schedule = model_validate(
+                ScheduledTask,
+                self.serializer.loadb(raw_schedule),
+            )
+            schedules.append(parsed_schedule)
+        return schedules
 
     async def post_send(self, task: ScheduledTask) -> None:
         """Delete a task after it's completed."""
