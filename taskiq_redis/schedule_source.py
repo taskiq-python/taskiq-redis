@@ -117,7 +117,6 @@ class RedisClusterScheduleSource(ScheduleSource):
         self,
         url: str,
         prefix: str = "schedule",
-        buffer_size: int = 50,
         serializer: Optional[TaskiqSerializer] = None,
         **connection_kwargs: Any,
     ) -> None:
@@ -126,7 +125,6 @@ class RedisClusterScheduleSource(ScheduleSource):
             url,
             **connection_kwargs,
         )
-        self.buffer_size = buffer_size
         if serializer is None:
             serializer = PickleSerializer()
         self.serializer = serializer
@@ -157,7 +155,7 @@ class RedisClusterScheduleSource(ScheduleSource):
         """
         schedules = []
         async for key in self.redis.scan_iter(f"{self.prefix}:*"):  # type: ignore[attr-defined]
-            raw_schedule = await self.redis.get(key)
+            raw_schedule = await self.redis.get(key)  # type: ignore[attr-defined]
             parsed_schedule = model_validate(
                 ScheduledTask,
                 self.serializer.loadb(raw_schedule),

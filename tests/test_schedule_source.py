@@ -196,10 +196,23 @@ async def test_cluster_post_run_time(redis_cluster_url: str) -> None:
 
 
 @pytest.mark.anyio
-async def test_cluster_buffer(redis_cluster_url: str) -> None:
+async def test_cluster_get_schedules(redis_cluster_url: str) -> None:
+    """
+    Test of a redis cluster source.
+
+    This test checks that if the schedules are located on different nodes,
+    the source will still be able to get them all.
+
+    To simulate this we set a specific shard key for each schedule.
+    The shard keys are from this gist:
+
+    https://gist.githubusercontent.com/dvirsky/93f43277317f629bb06e858946416f7e/raw/b0438faf6f5a0020c12a0730f6cd6ac4bdc4b171/crc16_slottable.h
+
+    """
     prefix = uuid.uuid4().hex
-    source = RedisClusterScheduleSource(redis_cluster_url, prefix=prefix, buffer_size=1)
+    source = RedisClusterScheduleSource(redis_cluster_url, prefix=prefix)
     schedule1 = ScheduledTask(
+        schedule_id=r"id-{06S}",
         task_name="test_task1",
         labels={},
         args=[],
@@ -207,6 +220,7 @@ async def test_cluster_buffer(redis_cluster_url: str) -> None:
         cron="* * * * *",
     )
     schedule2 = ScheduledTask(
+        schedule_id=r"id-{4Rs}",
         task_name="test_task2",
         labels={},
         args=[],
