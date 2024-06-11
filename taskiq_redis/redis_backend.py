@@ -1,4 +1,3 @@
-import pickle
 import sys
 from contextlib import asynccontextmanager
 from typing import (
@@ -15,16 +14,18 @@ from typing import (
 
 from redis.asyncio import BlockingConnectionPool, Redis, Sentinel
 from redis.asyncio.cluster import RedisCluster
+from redis.asyncio.connection import Connection
 from taskiq import AsyncResultBackend
 from taskiq.abc.result_backend import TaskiqResult
 from taskiq.abc.serializer import TaskiqSerializer
+from taskiq.compat import model_dump, model_validate
+from taskiq.serializers import PickleSerializer
 
 from taskiq_redis.exceptions import (
     DuplicateExpireTimeSelectedError,
     ExpireTimeMustBeMoreThanZeroError,
     ResultIsMissingError,
 )
-from taskiq_redis.serializer import PickleSerializer
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -33,8 +34,10 @@ else:
 
 if TYPE_CHECKING:
     _Redis: TypeAlias = Redis[bytes]
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]
 else:
     _Redis: TypeAlias = Redis
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
 
 _ReturnType = TypeVar("_ReturnType")
 
@@ -49,6 +52,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         result_ex_time: Optional[int] = None,
         result_px_time: Optional[int] = None,
         max_connection_pool_size: Optional[int] = None,
+        serializer: Optional[TaskiqSerializer] = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -66,11 +70,12 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :raises ExpireTimeMustBeMoreThanZeroError: if result_ex_time
             and result_px_time are equal zero.
         """
-        self.redis_pool = BlockingConnectionPool.from_url(
+        self.redis_pool: _BlockingConnectionPool = BlockingConnectionPool.from_url(
             url=redis_url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
         )
+        self.serializer = serializer or PickleSerializer()
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
@@ -110,9 +115,9 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param task_id: ID of the task.
         :param result: TaskiqResult instance.
         """
-        redis_set_params: Dict[str, Union[str, bytes, int]] = {
+        redis_set_params: Dict[str, Union[str, int, bytes]] = {
             "name": task_id,
-            "value": pickle.dumps(result),
+            "value": self.serializer.dumpb(model_dump(result)),
         }
         if self.result_ex_time:
             redis_set_params["ex"] = self.result_ex_time
@@ -159,8 +164,9 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(  # noqa: S301
-            result_value,
+        taskiq_result = model_validate(
+            TaskiqResult[_ReturnType],
+            self.serializer.loadb(result_value),
         )
 
         if not with_logs:
@@ -178,6 +184,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         keep_results: bool = True,
         result_ex_time: Optional[int] = None,
         result_px_time: Optional[int] = None,
+        serializer: Optional[TaskiqSerializer] = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -198,6 +205,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
             redis_url,
             **connection_kwargs,
         )
+        self.serializer = serializer or PickleSerializer()
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
@@ -239,7 +247,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         """
         redis_set_params: Dict[str, Union[str, bytes, int]] = {
             "name": task_id,
-            "value": pickle.dumps(result),
+            "value": self.serializer.dumpb(model_dump(result)),
         }
         if self.result_ex_time:
             redis_set_params["ex"] = self.result_ex_time
@@ -283,8 +291,9 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(  # noqa: S301
-            result_value,
+        taskiq_result: TaskiqResult[_ReturnType] = model_validate(
+            TaskiqResult[_ReturnType],
+            self.serializer.loadb(result_value),
         )
 
         if not with_logs:
@@ -331,9 +340,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
             **connection_kwargs,
         )
         self.master_name = master_name
-        if serializer is None:
-            serializer = PickleSerializer()
-        self.serializer = serializer
+        self.serializer = serializer or PickleSerializer()
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
@@ -375,7 +382,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         """
         redis_set_params: Dict[str, Union[str, bytes, int]] = {
             "name": task_id,
-            "value": self.serializer.dumpb(result),
+            "value": self.serializer.dumpb(model_dump(result)),
         }
         if self.result_ex_time:
             redis_set_params["ex"] = self.result_ex_time
@@ -422,11 +429,17 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result: TaskiqResult[_ReturnType] = pickle.loads(  # noqa: S301
-            result_value,
+        taskiq_result = model_validate(
+            TaskiqResult[_ReturnType],
+            self.serializer.loadb(result_value),
         )
 
         if not with_logs:
             taskiq_result.log = None
 
         return taskiq_result
+
+    async def shutdown(self) -> None:
+        """Shutdown sentinel connections."""
+        for sentinel in self.sentinel.sentinels:
+            await sentinel.aclose()  # type: ignore[attr-defined]

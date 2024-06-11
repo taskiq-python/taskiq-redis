@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple
 
 from redis.asyncio import (
     BlockingConnectionPool,
-    ConnectionPool,
+    Connection,
     Redis,
     RedisCluster,
     Sentinel,
@@ -13,8 +13,7 @@ from taskiq import ScheduleSource
 from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.compat import model_dump, model_validate
 from taskiq.scheduler.scheduled_task import ScheduledTask
-
-from taskiq_redis.serializer import PickleSerializer
+from taskiq.serializers import PickleSerializer
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -23,8 +22,10 @@ else:
 
 if TYPE_CHECKING:
     _Redis: TypeAlias = Redis[bytes]
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]
 else:
     _Redis: TypeAlias = Redis
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
 
 
 class RedisScheduleSource(ScheduleSource):
@@ -53,7 +54,7 @@ class RedisScheduleSource(ScheduleSource):
         **connection_kwargs: Any,
     ) -> None:
         self.prefix = prefix
-        self.connection_pool: ConnectionPool = BlockingConnectionPool.from_url(
+        self.connection_pool: _BlockingConnectionPool = BlockingConnectionPool.from_url(
             url=url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
@@ -186,6 +187,10 @@ class RedisClusterScheduleSource(ScheduleSource):
         if task.time is not None:
             await self.delete_schedule(task.schedule_id)
 
+    async def shutdown(self) -> None:
+        """Shut down the schedule source."""
+        await self.redis.aclose()  # type: ignore[attr-defined]
+
 
 class RedisSentinelScheduleSource(ScheduleSource):
     """
@@ -279,3 +284,8 @@ class RedisSentinelScheduleSource(ScheduleSource):
         """Delete a task after it's completed."""
         if task.time is not None:
             await self.delete_schedule(task.schedule_id)
+
+    async def shutdown(self) -> None:
+        """Shut down the schedule source."""
+        for sentinel in self.sentinel.sentinels:
+            await sentinel.aclose()  # type: ignore[attr-defined]
