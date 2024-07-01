@@ -123,8 +123,12 @@ class ListQueueBroker(BaseRedisBroker):
         :yields: broker messages.
         """
         redis_brpop_data_position = 1
-        async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            while True:
-                yield (await redis_conn.brpop(self.queue_name))[
-                    redis_brpop_data_position
-                ]
+        while True:
+            try:
+                async with Redis(connection_pool=self.connection_pool) as redis_conn:
+                    yield (await redis_conn.brpop(self.queue_name))[
+                        redis_brpop_data_position
+                    ]
+            except ConnectionError as exc:
+                logger.warning("Redis connection error: %s", exc)
+                continue
