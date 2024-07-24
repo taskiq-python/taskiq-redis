@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import pytest
 from taskiq import TaskiqResult
+from taskiq.depends.progress_tracker import TaskProgress, TaskState
 
 from taskiq_redis import (
     RedisAsyncClusterResultBackend,
@@ -437,4 +438,125 @@ async def test_keep_results_after_reading_sentinel(
     res1 = await result_backend.get_result(task_id=task_id)
     res2 = await result_backend.get_result(task_id=task_id)
     assert res1 == res2
+    await result_backend.shutdown()
+
+
+@pytest.mark.anyio
+async def test_set_progress(redis_url: str) -> None:
+    """
+    Test that set_progress/get_progress works.
+
+    :param redis_url: redis URL.
+    """
+    result_backend = RedisAsyncResultBackend(  # type: ignore
+        redis_url=redis_url,
+    )
+    task_id = uuid.uuid4().hex
+
+    test_progress_1 = TaskProgress(
+        state=TaskState.STARTED,
+        meta={"message": "quarter way", "pct": 25},
+    )
+    test_progress_2 = TaskProgress(
+        state=TaskState.STARTED,
+        meta={"message": "half way", "pct": 50},
+    )
+
+    # Progress starts as None
+    assert await result_backend.get_progress(task_id=task_id) is None
+
+    # Setting the first time persists
+    await result_backend.set_progress(task_id=task_id, progress=test_progress_1)
+
+    fetched_result = await result_backend.get_progress(task_id=task_id)
+    assert fetched_result == test_progress_1
+
+    # Setting the second time replaces the first
+    await result_backend.set_progress(task_id=task_id, progress=test_progress_2)
+
+    fetched_result = await result_backend.get_progress(task_id=task_id)
+    assert fetched_result == test_progress_2
+
+    await result_backend.shutdown()
+
+
+@pytest.mark.anyio
+async def test_set_progress_cluster(redis_cluster_url: str) -> None:
+    """
+    Test that set_progress/get_progress works in cluster mode.
+
+    :param redis_url: redis URL.
+    """
+    result_backend = RedisAsyncClusterResultBackend(  # type: ignore
+        redis_url=redis_cluster_url,
+    )
+    task_id = uuid.uuid4().hex
+
+    test_progress_1 = TaskProgress(
+        state=TaskState.STARTED,
+        meta={"message": "quarter way", "pct": 25},
+    )
+    test_progress_2 = TaskProgress(
+        state=TaskState.STARTED,
+        meta={"message": "half way", "pct": 50},
+    )
+
+    # Progress starts as None
+    assert await result_backend.get_progress(task_id=task_id) is None
+
+    # Setting the first time persists
+    await result_backend.set_progress(task_id=task_id, progress=test_progress_1)
+
+    fetched_result = await result_backend.get_progress(task_id=task_id)
+    assert fetched_result == test_progress_1
+
+    # Setting the second time replaces the first
+    await result_backend.set_progress(task_id=task_id, progress=test_progress_2)
+
+    fetched_result = await result_backend.get_progress(task_id=task_id)
+    assert fetched_result == test_progress_2
+
+    await result_backend.shutdown()
+
+
+@pytest.mark.anyio
+async def test_set_progress_sentinel(
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    """
+    Test that set_progress/get_progress works in cluster mode.
+
+    :param redis_url: redis URL.
+    """
+    result_backend = RedisAsyncSentinelResultBackend(  # type: ignore
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+    )
+    task_id = uuid.uuid4().hex
+
+    test_progress_1 = TaskProgress(
+        state=TaskState.STARTED,
+        meta={"message": "quarter way", "pct": 25},
+    )
+    test_progress_2 = TaskProgress(
+        state=TaskState.STARTED,
+        meta={"message": "half way", "pct": 50},
+    )
+
+    # Progress starts as None
+    assert await result_backend.get_progress(task_id=task_id) is None
+
+    # Setting the first time persists
+    await result_backend.set_progress(task_id=task_id, progress=test_progress_1)
+
+    fetched_result = await result_backend.get_progress(task_id=task_id)
+    assert fetched_result == test_progress_1
+
+    # Setting the second time replaces the first
+    await result_backend.set_progress(task_id=task_id, progress=test_progress_2)
+
+    fetched_result = await result_backend.get_progress(task_id=task_id)
+    assert fetched_result == test_progress_2
+
     await result_backend.shutdown()
