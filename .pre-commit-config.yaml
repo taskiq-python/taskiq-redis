@@ -18,7 +18,7 @@ repos:
     hooks:
       - id: black
         name: Format with Black
-        entry: black
+        entry: poetry run black
         language: system
         types: [python]
 
@@ -36,6 +36,6 @@ repos:
 
       - id: mypy
         name: Validate types with MyPy
-        entry: mypy
+        entry: poetry run mypy
         language: system
         types: [ python ]
