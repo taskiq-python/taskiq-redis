@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "taskiq-redis"
-version = "1.0.0"
+version = "0.0.0"
 description = "Redis integration for taskiq"
 authors = ["taskiq-team <taskiq@norely.com>"]
 readme = "README.md"
@@ -39,7 +39,7 @@ pytest-env = "^0.6.2"
 fakeredis = "^2"
 pre-commit = "^2.20.0"
 pytest-xdist = { version = "^2.5.0", extras = ["psutil"] }
-ruff = "^0.1.0"
+ruff = "^0"
 types-redis = "^4.6.0.20240425"
 
 [tool.mypy]

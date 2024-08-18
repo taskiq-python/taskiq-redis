@@ -18,6 +18,8 @@ jobs:
         uses: knowsuchagency/poetry-install@v1
         env:
           POETRY_VIRTUALENVS_CREATE: false
+      - name: Set version
+        run: poetry version "${{ github.ref_name }}"
       - name: Release package
         env:
           POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
