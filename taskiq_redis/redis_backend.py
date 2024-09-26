@@ -19,6 +19,7 @@ from taskiq import AsyncResultBackend
 from taskiq.abc.result_backend import TaskiqResult
 from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.compat import model_dump, model_validate
+from taskiq.depends.progress_tracker import TaskProgress
 from taskiq.serializers import PickleSerializer
 
 from taskiq_redis.exceptions import (
@@ -40,6 +41,8 @@ else:
     _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
 
 _ReturnType = TypeVar("_ReturnType")
+
+PROGRESS_KEY_SUFFIX = "__progress"
 
 
 class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
@@ -174,6 +177,55 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
 
         return taskiq_result
 
+    async def set_progress(
+        self,
+        task_id: str,
+        progress: TaskProgress[_ReturnType],
+    ) -> None:
+        """
+        Sets task progress in redis.
+
+        Dumps TaskProgress instance into the bytes and writes
+        it to redis with a standard suffix on the task_id as the key
+
+        :param task_id: ID of the task.
+        :param result: task's TaskProgress instance.
+        """
+        redis_set_params: Dict[str, Union[str, int, bytes]] = {
+            "name": task_id + PROGRESS_KEY_SUFFIX,
+            "value": self.serializer.dumpb(model_dump(progress)),
+        }
+        if self.result_ex_time:
+            redis_set_params["ex"] = self.result_ex_time
+        elif self.result_px_time:
+            redis_set_params["px"] = self.result_px_time
+
+        async with Redis(connection_pool=self.redis_pool) as redis:
+            await redis.set(**redis_set_params)  # type: ignore
+
+    async def get_progress(
+        self,
+        task_id: str,
+    ) -> Union[TaskProgress[_ReturnType], None]:
+        """
+        Gets progress results from the task.
+
+        :param task_id: task's id.
+        :return: task's TaskProgress instance.
+        """
+        async with Redis(connection_pool=self.redis_pool) as redis:
+            result_value = await redis.get(
+                name=task_id + PROGRESS_KEY_SUFFIX,
+            )
+
+        if result_value is None:
+            return None
+
+        return model_validate(
+            TaskProgress[_ReturnType],
+            self.serializer.loadb(result_value),
+        )
+
 
 class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
     """Async result backend based on redis cluster."""
@@ -300,6 +352,53 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
             taskiq_result.log = None
 
         return taskiq_result
+
+    async def set_progress(
+        self,
+        task_id: str,
+        progress: TaskProgress[_ReturnType],
+    ) -> None:
+        """
+        Sets task progress in redis.
+
+        Dumps TaskProgress instance into the bytes and writes
+        it to redis with a standard suffix on the task_id as the key
+
+        :param task_id: ID of the task.
+        :param result: task's TaskProgress instance.
+        """
+        redis_set_params: Dict[str, Union[str, int, bytes]] = {
+            "name": task_id + PROGRESS_KEY_SUFFIX,
+            "value": self.serializer.dumpb(model_dump(progress)),
+        }
+        if self.result_ex_time:
+            redis_set_params["ex"] = self.result_ex_time
+        elif self.result_px_time:
+            redis_set_params["px"] = self.result_px_time
+
+        await self.redis.set(**redis_set_params)  # type: ignore
+
+    async def get_progress(
+        self,
+        task_id: str,
+    ) -> Union[TaskProgress[_ReturnType], None]:
+        """
+        Gets progress results from the task.
+
+        :param task_id: task's id.
+        :return: task's TaskProgress instance.
+        """
+        result_value = await self.redis.get(  # type: ignore[attr-defined]
+            name=task_id + PROGRESS_KEY_SUFFIX,
+        )
+
+        if result_value is None:
+            return None
+
+        return model_validate(
+            TaskProgress[_ReturnType],
+            self.serializer.loadb(result_value),
+        )
 
 
 class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
@@ -438,6 +537,55 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
             taskiq_result.log = None
 
         return taskiq_result
+
+    async def set_progress(
+        self,
+        task_id: str,
+        progress: TaskProgress[_ReturnType],
+    ) -> None:
+        """
+        Sets task progress in redis.
+
+        Dumps TaskProgress instance into the bytes and writes
+        it to redis with a standard suffix on the task_id as the key
+
+        :param task_id: ID of the task.
+        :param result: task's TaskProgress instance.
+        """
+        redis_set_params: Dict[str, Union[str, int, bytes]] = {
+            "name": task_id + PROGRESS_KEY_SUFFIX,
+            "value": self.serializer.dumpb(model_dump(progress)),
+        }
+        if self.result_ex_time:
+            redis_set_params["ex"] = self.result_ex_time
+        elif self.result_px_time:
+            redis_set_params["px"] = self.result_px_time
+
+        async with self._acquire_master_conn() as redis:
+            await redis.set(**redis_set_params)  # type: ignore
+
+    async def get_progress(
+        self,
+        task_id: str,
+    ) -> Union[TaskProgress[_ReturnType], None]:
+        """
+        Gets progress results from the task.
+
+        :param task_id: task's id.
+        :return: task's TaskProgress instance.
+        """
+        async with self._acquire_master_conn() as redis:
+            result_value = await redis.get(
+                name=task_id + PROGRESS_KEY_SUFFIX,
+            )
+
+        if result_value is None:
+            return None
+
+        return model_validate(
+            TaskProgress[_ReturnType],
+            self.serializer.loadb(result_value),
+        )
 
     async def shutdown(self) -> None:
         """Shutdown sentinel connections."""
