@@ -56,6 +56,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         result_px_time: Optional[int] = None,
         max_connection_pool_size: Optional[int] = None,
         serializer: Optional[TaskiqSerializer] = None,
+        prefix_str: Optional[str] = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -82,6 +83,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
+        self.prefix_str = prefix_str
 
         unavailable_conditions = any(
             (
@@ -98,6 +100,11 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             raise DuplicateExpireTimeSelectedError(
                 "Choose either result_ex_time or result_px_time.",
             )
+
+    def _task_name(self, task_id: str) -> str:
+        if self.prefix_str is None:
+            return task_id
+        return f"{self.prefix_str}:{task_id}"
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
@@ -119,7 +126,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: TaskiqResult instance.
         """
         redis_set_params: Dict[str, Union[str, int, bytes]] = {
-            "name": task_id,
+            "name": self._task_name(task_id),
             "value": self.serializer.dumpb(model_dump(result)),
         }
         if self.result_ex_time:
@@ -139,7 +146,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :returns: True if the result is ready else False.
         """
         async with Redis(connection_pool=self.redis_pool) as redis:
-            return bool(await redis.exists(task_id))
+            return bool(await redis.exists(self._task_name(task_id)))
 
     async def get_result(
         self,
@@ -154,14 +161,15 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :raises ResultIsMissingError: if there is no result when trying to get it.
         :return: task's return value.
         """
+        task_name = self._task_name(task_id)
         async with Redis(connection_pool=self.redis_pool) as redis:
             if self.keep_results:
                 result_value = await redis.get(
-                    name=task_id,
+                    name=task_name,
                 )
             else:
                 result_value = await redis.getdel(
-                    name=task_id,
+                    name=task_name,
                 )
 
         if result_value is None:
@@ -192,7 +200,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: task's TaskProgress instance.
         """
         redis_set_params: Dict[str, Union[str, int, bytes]] = {
-            "name": task_id + PROGRESS_KEY_SUFFIX,
+            "name": self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
             "value": self.serializer.dumpb(model_dump(progress)),
         }
         if self.result_ex_time:
@@ -215,7 +223,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         """
         async with Redis(connection_pool=self.redis_pool) as redis:
             result_value = await redis.get(
-                name=task_id + PROGRESS_KEY_SUFFIX,
+                name=self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
             )
 
         if result_value is None:
@@ -237,6 +245,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         result_ex_time: Optional[int] = None,
         result_px_time: Optional[int] = None,
         serializer: Optional[TaskiqSerializer] = None,
+        prefix_str: Optional[str] = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -261,6 +270,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
+        self.prefix_str = prefix_str
 
         unavailable_conditions = any(
             (
@@ -277,6 +287,11 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
             raise DuplicateExpireTimeSelectedError(
                 "Choose either result_ex_time or result_px_time.",
             )
+
+    def _task_name(self, task_id: str) -> str:
+        if self.prefix_str is None:
+            return task_id
+        return f"{self.prefix_str}:{task_id}"
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
@@ -298,7 +313,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: TaskiqResult instance.
         """
         redis_set_params: Dict[str, Union[str, bytes, int]] = {
-            "name": task_id,
+            "name": self._task_name(task_id),
             "value": self.serializer.dumpb(model_dump(result)),
         }
         if self.result_ex_time:
@@ -316,7 +331,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
 
         :returns: True if the result is ready else False.
         """
-        return bool(await self.redis.exists(task_id))  # type: ignore[attr-defined]
+        return bool(await self.redis.exists(self._task_name(task_id)))  # type: ignore[attr-defined]
 
     async def get_result(
         self,
@@ -331,13 +346,14 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :raises ResultIsMissingError: if there is no result when trying to get it.
         :return: task's return value.
         """
+        task_name = self._task_name(task_id)
         if self.keep_results:
             result_value = await self.redis.get(  # type: ignore[attr-defined]
-                name=task_id,
+                name=task_name,
             )
         else:
             result_value = await self.redis.getdel(  # type: ignore[attr-defined]
-                name=task_id,
+                name=task_name,
             )
 
         if result_value is None:
@@ -368,7 +384,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: task's TaskProgress instance.
         """
         redis_set_params: Dict[str, Union[str, int, bytes]] = {
-            "name": task_id + PROGRESS_KEY_SUFFIX,
+            "name": self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
             "value": self.serializer.dumpb(model_dump(progress)),
         }
         if self.result_ex_time:
@@ -389,7 +405,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :return: task's TaskProgress instance.
         """
         result_value = await self.redis.get(  # type: ignore[attr-defined]
-            name=task_id + PROGRESS_KEY_SUFFIX,
+            name=self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
         )
 
         if result_value is None:
@@ -414,6 +430,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         min_other_sentinels: int = 0,
         sentinel_kwargs: Optional[Any] = None,
         serializer: Optional[TaskiqSerializer] = None,
+        prefix_str: Optional[str] = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -443,6 +460,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         self.keep_results = keep_results
         self.result_ex_time = result_ex_time
         self.result_px_time = result_px_time
+        self.prefix_str = prefix_str
 
         unavailable_conditions = any(
             (
@@ -459,6 +477,11 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
             raise DuplicateExpireTimeSelectedError(
                 "Choose either result_ex_time or result_px_time.",
             )
+
+    def _task_name(self, task_id: str) -> str:
+        if self.prefix_str is None:
+            return task_id
+        return f"{self.prefix_str}:{task_id}"
 
     @asynccontextmanager
     async def _acquire_master_conn(self) -> AsyncIterator[_Redis]:
@@ -480,7 +503,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: TaskiqResult instance.
         """
         redis_set_params: Dict[str, Union[str, bytes, int]] = {
-            "name": task_id,
+            "name": self._task_name(task_id),
             "value": self.serializer.dumpb(model_dump(result)),
         }
         if self.result_ex_time:
@@ -500,7 +523,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         :returns: True if the result is ready else False.
         """
         async with self._acquire_master_conn() as redis:
-            return bool(await redis.exists(task_id))
+            return bool(await redis.exists(self._task_name(task_id)))
 
     async def get_result(
         self,
@@ -515,14 +538,15 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         :raises ResultIsMissingError: if there is no result when trying to get it.
         :return: task's return value.
         """
+        task_name = self._task_name(task_id)
         async with self._acquire_master_conn() as redis:
             if self.keep_results:
                 result_value = await redis.get(
-                    name=task_id,
+                    name=task_name,
                 )
             else:
                 result_value = await redis.getdel(
-                    name=task_id,
+                    name=task_name,
                 )
 
         if result_value is None:
@@ -553,7 +577,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: task's TaskProgress instance.
         """
         redis_set_params: Dict[str, Union[str, int, bytes]] = {
-            "name": task_id + PROGRESS_KEY_SUFFIX,
+            "name": self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
             "value": self.serializer.dumpb(model_dump(progress)),
         }
         if self.result_ex_time:
@@ -576,7 +600,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         """
         async with self._acquire_master_conn() as redis:
             result_value = await redis.get(
-                name=task_id + PROGRESS_KEY_SUFFIX,
+                name=self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
             )
 
         if result_value is None:
