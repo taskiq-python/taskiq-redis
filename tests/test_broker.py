@@ -11,6 +11,8 @@ from taskiq_redis import (
     ListQueueSentinelBroker,
     PubSubBroker,
     PubSubSentinelBroker,
+    RedisStreamClusterBroker,
+    RedisStreamSentinelBroker,
 )
 
 
@@ -178,6 +180,38 @@ async def test_list_queue_cluster_broker(
 
 
 @pytest.mark.anyio
+async def test_stream_cluster_broker(
+    valid_broker_message: BrokerMessage,
+    redis_cluster_url: str,
+) -> None:
+    """
+    Test that messages are published and read correctly by ListQueueClusterBroker.
+
+    We create two workers that listen and send a message to them.
+    Expect only one worker to receive the same message we sent.
+    """
+    broker = RedisStreamClusterBroker(
+        url=redis_cluster_url,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+    )
+    await broker.startup()
+    worker_task = asyncio.create_task(get_message(broker))
+    await asyncio.sleep(0.3)
+
+    await broker.kick(valid_broker_message)
+    await asyncio.sleep(0.3)
+
+    assert worker_task.done()
+    result = worker_task.result()
+    assert isinstance(result, AckableMessage)
+    assert result.data == valid_broker_message.message
+    await result.ack()  # type: ignore
+    worker_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
 async def test_pub_sub_sentinel_broker(
     valid_broker_message: BrokerMessage,
     redis_sentinels: List[Tuple[str, int]],
@@ -233,5 +267,39 @@ async def test_list_queue_sentinel_broker(
 
     assert worker_task.done()
     assert worker_task.result() == valid_broker_message.message
+    worker_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_streams_sentinel_broker(
+    valid_broker_message: BrokerMessage,
+    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinel_master_name: str,
+) -> None:
+    """
+    Test that messages are published and read correctly by ListQueueSentinelBroker.
+
+    We create two workers that listen and send a message to them.
+    Expect only one worker to receive the same message we sent.
+    """
+    broker = RedisStreamSentinelBroker(
+        sentinels=redis_sentinels,
+        master_name=redis_sentinel_master_name,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+    )
+    await broker.startup()
+    worker_task = asyncio.create_task(get_message(broker))
+    await asyncio.sleep(0.3)
+
+    await broker.kick(valid_broker_message)
+    await asyncio.sleep(0.3)
+
+    assert worker_task.done()
+    result = worker_task.result()
+    assert isinstance(result, AckableMessage)
+    assert result.data == valid_broker_message.message
+    await result.ack()  # type: ignore
     worker_task.cancel()
     await broker.shutdown()

@@ -1,8 +1,19 @@
 import sys
+import uuid
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Optional, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Dict,
+    Optional,
+    TypeVar,
+)
 
-from redis.asyncio import BlockingConnectionPool, Connection, Redis
+from redis.asyncio import BlockingConnectionPool, Connection, Redis, ResponseError
+from taskiq import AckableMessage
 from taskiq.abc.broker import AsyncBroker
 from taskiq.abc.result_backend import AsyncResultBackend
 from taskiq.message import BrokerMessage
@@ -132,3 +143,110 @@ class ListQueueBroker(BaseRedisBroker):
             except ConnectionError as exc:
                 logger.warning("Redis connection error: %s", exc)
                 continue
+
+
+class RedisStreamBroker(BaseRedisBroker):
+    """
+    Redis broker that uses streams for task distribution.
+
+    You can read more about streams here:
+    https://redis.io/docs/latest/develop/data-types/streams
+
+    This broker supports acknowledgment of messages.
+    """
+
+    def __init__(
+        self,
+        url: str,
+        queue_name: str = "taskiq",
+        max_connection_pool_size: Optional[int] = None,
+        consumer_group_name: str = "taskiq",
+        consumer_name: Optional[str] = None,
+        consumer_id: str = "$",
+        mkstream: bool = True,
+        xread_block: int = 10000,
+        additional_streams: Optional[Dict[str, str]] = None,
+        **connection_kwargs: Any,
+    ) -> None:
+        super().__init__(
+            url,
+            task_id_generator=None,
+            result_backend=None,
+            queue_name=queue_name,
+            max_connection_pool_size=max_connection_pool_size,
+            **connection_kwargs,
+        )
+        self.consumer_group_name = consumer_group_name
+        self.consumer_name = consumer_name or str(uuid.uuid4())
+        self.consumer_id = consumer_id
+        self.mkstream = mkstream
+        self.block = xread_block
+        self.additional_streams = additional_streams or {}
+
+    async def _declare_consumer_group(self) -> None:
+        """
+        Declare consumber group.
+
+        Required for proper work of the broker.
+        """
+        streams = {self.queue_name, *self.additional_streams.keys()}
+        async with Redis(connection_pool=self.connection_pool) as redis_conn:
+            for stream_name in streams:
+                try:
+                    await redis_conn.xgroup_create(
+                        stream_name,
+                        self.consumer_group_name,
+                        id=self.consumer_id,
+                        mkstream=self.mkstream,
+                    )
+                except ResponseError as err:
+                    logger.debug(err)
+
+    async def startup(self) -> None:
+        """Declare consumer group on startup."""
+        await super().startup()
+        await self._declare_consumer_group()
+
+    async def kick(self, message: BrokerMessage) -> None:
+        """
+        Put a message in a list.
+
+        This method appends a message to the list of all messages.
+
+        :param message: message to append.
+        """
+        async with Redis(connection_pool=self.connection_pool) as redis_conn:
+            await redis_conn.xadd(self.queue_name, {b"data": message.message})
+
+    def _ack_generator(self, id: str) -> Callable[[], Awaitable[None]]:
+        async def _ack() -> None:
+            async with Redis(connection_pool=self.connection_pool) as redis_conn:
+                await redis_conn.xack(
+                    self.queue_name,
+                    self.consumer_group_name,
+                    id,
+                )
+
+        return _ack
+
+    async def listen(self) -> AsyncGenerator[AckableMessage, None]:
+        """Listen to incoming messages."""
+        async with Redis(connection_pool=self.connection_pool) as redis_conn:
+            while True:
+                fetched = await redis_conn.xreadgroup(
+                    self.consumer_group_name,
+                    self.consumer_name,
+                    {
+                        self.queue_name: ">",
+                        **self.additional_streams,
+                    },
+                    block=self.block,
+                    noack=False,
+                )
+                for _, msg_list in fetched:
+                    for msg_id, msg in msg_list:
+                        logger.debug("Received message: %s", msg)
+                        yield AckableMessage(
+                            data=msg[b"data"],
+                            ack=self._ack_generator(msg_id),
+                        )

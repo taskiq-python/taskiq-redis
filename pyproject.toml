@@ -25,22 +25,21 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
-taskiq = ">=0.11.1,<1"
+python = "^3.9"
+taskiq = ">=0.11.12,<1"
 redis = "^5"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.0"
+pytest = "^8"
 mypy = "^1"
-black = "^22.3.0"
-pytest-cov = "^3.0.0"
-anyio = "^3.6.1"
-pytest-env = "^0.6.2"
+black = "^25"
+pytest-cov = "^6"
+anyio = "^4"
+pytest-env = "^1"
 fakeredis = "^2"
-pre-commit = "^2.20.0"
-pytest-xdist = { version = "^2.5.0", extras = ["psutil"] }
+pre-commit = "^4"
+pytest-xdist = { version = "^3", extras = ["psutil"] }
 ruff = "^0"
-types-redis = "^4.6.0.20240425"
 
 [tool.mypy]
 strict = true
@@ -65,7 +64,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 # List of enabled rulsets.
 # See https://docs.astral.sh/ruff/rules/ for more information.
-select = [
+lint.select = [
     "E",   # Error
     "F",   # Pyflakes
     "W",   # Pycodestyle
@@ -92,24 +91,22 @@ select = [
     "PL",  # PyLint checks
     "RUF", # Specific to Ruff checks
 ]
-ignore = [
+lint.ignore = [
     "D105",    # Missing docstring in magic method
     "D107",    # Missing docstring in __init__
     "D212",    # Multi-line docstring summary should start at the first line
     "D401",    # First line should be in imperative mood
     "D104",    # Missing docstring in public package
     "D100",    # Missing docstring in public module
-    "ANN102",  # Missing type annotation for self in method
-    "ANN101",  # Missing type annotation for argument
     "ANN401",  # typing.Any are disallowed in `**kwargs
     "PLR0913", # Too many arguments for function call
     "D106",    # Missing docstring in public nested class
 ]
 exclude = [".venv/"]
-mccabe = { max-complexity = 10 }
+lint.mccabe = { max-complexity = 10 }
 line-length = 88
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "S101",   # Use of assert detected
     "S301",   # Use of pickle detected
@@ -119,12 +116,12 @@ line-length = 88
     "D101",   # Missing docstring in public class
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "pep257"
 ignore-decorators = ["typing.overload"]
 
-[tool.ruff.pylint]
+[tool.ruff.lint.pylint]
 allow-magic-value-types = ["int", "str", "float"]
 
-[tool.ruff.flake8-bugbear]
+[tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["taskiq_dependencies.Depends", "taskiq.TaskiqDepends"]

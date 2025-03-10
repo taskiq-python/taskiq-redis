@@ -16,10 +16,10 @@ from redis.asyncio import BlockingConnectionPool, Redis, Sentinel
 from redis.asyncio.cluster import RedisCluster
 from redis.asyncio.connection import Connection
 from taskiq import AsyncResultBackend
-from taskiq.abc.result_backend import TaskiqResult
 from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.compat import model_dump, model_validate
 from taskiq.depends.progress_tracker import TaskProgress
+from taskiq.result import TaskiqResult
 from taskiq.serializers import PickleSerializer
 
 from taskiq_redis.exceptions import (
@@ -92,14 +92,10 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             ),
         )
         if unavailable_conditions:
-            raise ExpireTimeMustBeMoreThanZeroError(
-                "You must select one expire time param and it must be more than zero.",
-            )
+            raise ExpireTimeMustBeMoreThanZeroError
 
         if self.result_ex_time and self.result_px_time:
-            raise DuplicateExpireTimeSelectedError(
-                "Choose either result_ex_time or result_px_time.",
-            )
+            raise DuplicateExpireTimeSelectedError
 
     def _task_name(self, task_id: str) -> str:
         if self.prefix_str is None:
