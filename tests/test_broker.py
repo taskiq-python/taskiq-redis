@@ -14,6 +14,7 @@ from taskiq_redis import (
     RedisStreamClusterBroker,
     RedisStreamSentinelBroker,
 )
+from taskiq_redis.redis_broker import RedisStreamBroker
 
 
 def test_no_url_should_raise_typeerror() -> None:
@@ -130,6 +131,44 @@ async def test_list_queue_broker(
 
 
 @pytest.mark.anyio
+async def test_stream_broker(
+    valid_broker_message: BrokerMessage,
+    redis_url: str,
+) -> None:
+    """
+    Test that messages are published and read correctly by ListQueueBroker.
+
+    We create two workers that listen and send a message to them.
+    Expect only one worker to receive the same message we sent.
+    """
+    broker = RedisStreamBroker(
+        url=redis_url,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+    )
+    await broker.startup()
+
+    worker1_task = asyncio.create_task(get_message(broker))
+    worker2_task = asyncio.create_task(get_message(broker))
+
+    await broker.kick(valid_broker_message)
+
+    await asyncio.wait(
+        [worker1_task, worker2_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+
+    assert worker1_task.done() != worker2_task.done()
+    message = worker1_task.result() if worker1_task.done() else worker2_task.result()
+    assert isinstance(message, AckableMessage)
+    assert message.data == valid_broker_message.message
+    await message.ack()  # type: ignore
+    worker1_task.cancel()
+    worker2_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
 async def test_list_queue_broker_max_connections(
     valid_broker_message: BrokerMessage,
     redis_url: str,
@@ -196,14 +235,13 @@ async def test_stream_cluster_broker(
         consumer_group_name=uuid.uuid4().hex,
     )
     await broker.startup()
+
     worker_task = asyncio.create_task(get_message(broker))
-    await asyncio.sleep(0.3)
 
     await broker.kick(valid_broker_message)
-    await asyncio.sleep(0.3)
 
-    assert worker_task.done()
-    result = worker_task.result()
+    result = await worker_task
+
     assert isinstance(result, AckableMessage)
     assert result.data == valid_broker_message.message
     await result.ack()  # type: ignore
@@ -291,13 +329,10 @@ async def test_streams_sentinel_broker(
     )
     await broker.startup()
     worker_task = asyncio.create_task(get_message(broker))
-    await asyncio.sleep(0.3)
 
     await broker.kick(valid_broker_message)
-    await asyncio.sleep(0.3)
 
-    assert worker_task.done()
-    result = worker_task.result()
+    result = await worker_task
     assert isinstance(result, AckableMessage)
     assert result.data == valid_broker_message.message
     await result.ack()  # type: ignore

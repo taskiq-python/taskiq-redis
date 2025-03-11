@@ -27,7 +27,7 @@ else:
     from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    _Redis: TypeAlias = Redis[bytes]
+    _Redis: TypeAlias = Redis[bytes]  # type: ignore
 else:
     _Redis: TypeAlias = Redis
 
@@ -117,7 +117,7 @@ class ListQueueSentinelBroker(BaseSentinelBroker):
         """
         queue_name = message.labels.get("queue_name") or self.queue_name
         async with self._acquire_master_conn() as redis_conn:
-            await redis_conn.lpush(queue_name, message.message)
+            await redis_conn.lpush(queue_name, message.message)  # type: ignore
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -131,7 +131,7 @@ class ListQueueSentinelBroker(BaseSentinelBroker):
         redis_brpop_data_position = 1
         async with self._acquire_master_conn() as redis_conn:
             while True:
-                yield (await redis_conn.brpop(self.queue_name))[
+                yield (await redis_conn.brpop(self.queue_name))[  # type: ignore
                     redis_brpop_data_position
                 ]
 
@@ -226,7 +226,7 @@ class RedisStreamSentinelBroker(BaseSentinelBroker):
                     self.consumer_name,
                     {
                         self.queue_name: ">",
-                        **self.additional_streams,
+                        **self.additional_streams,  # type: ignore
                     },
                     block=self.block,
                     noack=False,

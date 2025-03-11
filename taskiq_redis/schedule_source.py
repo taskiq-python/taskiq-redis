@@ -21,8 +21,8 @@ else:
     from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    _Redis: TypeAlias = Redis[bytes]
-    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]
+    _Redis: TypeAlias = Redis[bytes]  # type: ignore
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]  # type: ignore
 else:
     _Redis: TypeAlias = Redis
     _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
@@ -140,7 +140,7 @@ class RedisClusterScheduleSource(ScheduleSource):
         **connection_kwargs: Any,
     ) -> None:
         self.prefix = prefix
-        self.redis: RedisCluster[bytes] = RedisCluster.from_url(
+        self.redis: "RedisCluster" = RedisCluster.from_url(
             url,
             **connection_kwargs,
         )
@@ -150,7 +150,7 @@ class RedisClusterScheduleSource(ScheduleSource):
 
     async def delete_schedule(self, schedule_id: str) -> None:
         """Remove schedule by id."""
-        await self.redis.delete(f"{self.prefix}:{schedule_id}")  # type: ignore[attr-defined]
+        await self.redis.delete(f"{self.prefix}:{schedule_id}")
 
     async def add_schedule(self, schedule: ScheduledTask) -> None:
         """
@@ -159,7 +159,7 @@ class RedisClusterScheduleSource(ScheduleSource):
         :param schedule: schedule to add.
         :param schedule_id: schedule id.
         """
-        await self.redis.set(  # type: ignore[attr-defined]
+        await self.redis.set(
             f"{self.prefix}:{schedule.schedule_id}",
             self.serializer.dumpb(model_dump(schedule)),
         )
@@ -173,8 +173,8 @@ class RedisClusterScheduleSource(ScheduleSource):
         :return: list of schedules.
         """
         schedules = []
-        async for key in self.redis.scan_iter(f"{self.prefix}:*"):  # type: ignore[attr-defined]
-            raw_schedule = await self.redis.get(key)  # type: ignore[attr-defined]
+        async for key in self.redis.scan_iter(f"{self.prefix}:*"):
+            raw_schedule = await self.redis.get(key)
             parsed_schedule = model_validate(
                 ScheduledTask,
                 self.serializer.loadb(raw_schedule),
@@ -189,7 +189,7 @@ class RedisClusterScheduleSource(ScheduleSource):
 
     async def shutdown(self) -> None:
         """Shut down the schedule source."""
-        await self.redis.aclose()  # type: ignore[attr-defined]
+        await self.redis.aclose()
 
 
 class RedisSentinelScheduleSource(ScheduleSource):
@@ -288,4 +288,4 @@ class RedisSentinelScheduleSource(ScheduleSource):
     async def shutdown(self) -> None:
         """Shut down the schedule source."""
         for sentinel in self.sentinel.sentinels:
-            await sentinel.aclose()  # type: ignore[attr-defined]
+            await sentinel.aclose()

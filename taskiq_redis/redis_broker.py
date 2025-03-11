@@ -28,7 +28,7 @@ else:
     from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]  # type: ignore
 else:
     _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
 
@@ -122,7 +122,7 @@ class ListQueueBroker(BaseRedisBroker):
         """
         queue_name = message.labels.get("queue_name") or self.queue_name
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            await redis_conn.lpush(queue_name, message.message)
+            await redis_conn.lpush(queue_name, message.message)  # type: ignore
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -137,7 +137,7 @@ class ListQueueBroker(BaseRedisBroker):
         while True:
             try:
                 async with Redis(connection_pool=self.connection_pool) as redis_conn:
-                    yield (await redis_conn.brpop(self.queue_name))[
+                    yield (await redis_conn.brpop(self.queue_name))[  # type: ignore
                         redis_brpop_data_position
                     ]
             except ConnectionError as exc:
@@ -238,7 +238,7 @@ class RedisStreamBroker(BaseRedisBroker):
                     self.consumer_name,
                     {
                         self.queue_name: ">",
-                        **self.additional_streams,
+                        **self.additional_streams,  # type: ignore
                     },
                     block=self.block,
                     noack=False,

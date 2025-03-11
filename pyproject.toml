@@ -55,6 +55,7 @@ warn_return_any = false
 [[tool.mypy.overrides]]
 module = ['redis']
 ignore_missing_imports = true
+ignore_errors = true
 strict = false
 
 [build-system]

@@ -30,7 +30,7 @@ class BaseRedisClusterBroker(AsyncBroker):
         """
         super().__init__()
 
-        self.redis: RedisCluster[bytes] = RedisCluster.from_url(
+        self.redis: "RedisCluster[bytes]" = RedisCluster.from_url(  # type: ignore
             url=url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
@@ -40,7 +40,7 @@ class BaseRedisClusterBroker(AsyncBroker):
 
     async def shutdown(self) -> None:
         """Closes redis connection pool."""
-        await self.redis.aclose()  # type: ignore[attr-defined]
+        await self.redis.aclose()
         await super().shutdown()
 
 
@@ -55,7 +55,7 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
 
         :param message: message to append.
         """
-        await self.redis.lpush(self.queue_name, message.message)  # type: ignore[attr-defined]
+        await self.redis.lpush(self.queue_name, message.message)  # type: ignore
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -68,7 +68,7 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
         """
         redis_brpop_data_position = 1
         while True:
-            value = await self.redis.brpop([self.queue_name])  # type: ignore[attr-defined]
+            value = await self.redis.brpop([self.queue_name])  # type: ignore
             yield value[redis_brpop_data_position]
 
 
@@ -155,7 +155,7 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
                 self.consumer_name,
                 {
                     self.queue_name: ">",
-                    **self.additional_streams,
+                    **self.additional_streams,  # type: ignore
                 },
                 block=self.block,
                 noack=False,
