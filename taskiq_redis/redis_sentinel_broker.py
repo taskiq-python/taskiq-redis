@@ -160,6 +160,25 @@ class RedisStreamSentinelBroker(BaseSentinelBroker):
         additional_streams: Optional[Dict[str, str]] = None,
         **connection_kwargs: Any,
     ) -> None:
+        """
+        Constructs a new broker that uses streams.
+
+        :param sentinels: list of nodes to connect to.
+        :param queue_name: name for a key with stream in redis.
+        :param max_connection_pool_size: maximum number of connections in pool.
+            Each worker opens its own connection. Therefore this value has to be
+            at least number of workers + 1.
+        :param consumer_group_name: name for a consumer group.
+            Redis will keep track of acked messages for this group.
+        :param consumer_name: name for a consumer. By default it is a random uuid.
+        :param consumer_id: id for a consumer. ID of a message to start reading from.
+            $ means start from the latest message.
+        :param mkstream: create stream if it does not exist.
+        :param xread_block: block time in ms for xreadgroup.
+            Better to set it to a bigger value, to avoid unnecessary calls.
+        :param additional_streams: additional streams to read from.
+            Each key is a stream name, value is a consumer id.
+        """
         super().__init__(
             sentinels=sentinels,
             master_name=master_name,
