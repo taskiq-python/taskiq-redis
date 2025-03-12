@@ -21,17 +21,17 @@ Let's see the example with the redis broker and redis async result:
 # broker.py
 import asyncio
 
-from taskiq_redis import ListQueueBroker, RedisAsyncResultBackend
+from taskiq_redis import RedisAsyncResultBackend, RedisStreamBroker
 
-redis_async_result = RedisAsyncResultBackend(
+result_backend = RedisAsyncResultBackend(
     redis_url="redis://localhost:6379",
 )
 
 # Or you can use PubSubBroker if you need broadcasting
-broker = ListQueueBroker(
+# Or ListQueueBroker if you don't want acknowledges
+broker = RedisStreamBroker(
     url="redis://localhost:6379",
-    result_backend=redis_async_result,
-)
+).with_result_backend(result_backend)
 
 
 @broker.task
