@@ -55,25 +55,48 @@ Launch the workers:
 Then run the main code:
 `python3 broker.py`
 
-## PubSubBroker and ListQueueBroker configuration
 
-We have two brokers with similar interfaces, but with different logic.
-The PubSubBroker uses redis' pubsub mechanism and is very powerful,
-but it executes every task on all workers, because PUBSUB broadcasts message
-to all subscribers.
+## Brokers
 
-If you want your messages to be processed only once, please use ListQueueBroker.
-It uses redis' [LPUSH](https://redis.io/commands/lpush/) and [BRPOP](https://redis.io/commands/brpop/) commands to deal with messages.
+This package contains 6 broker implementations.
+3 broker types:
+* PubSub broker
+* ListQueue broker
+* Stream broker
 
-Brokers parameters:
-* `url` - url to redis.
-* `task_id_generator` - custom task_id genertaor.
-* `result_backend` - custom result backend.
-* `queue_name` - name of the pub/sub channel in redis.
-* `max_connection_pool_size` - maximum number of connections in pool.
-* Any other keyword arguments are passed to `redis.asyncio.BlockingConnectionPool`.
-  Notably, you can use `timeout` to set custom timeout in seconds for reconnects
-  (or set it to `None` to try reconnects indefinitely).
+Each of type is implemented for each redis architecture:
+* Single node
+* Cluster
+* Sentinel
+
+Here's a small breakdown of how they differ from eachother.
+
+
+### PubSub
+
+By default on old redis versions PUBSUB was the way of making redis into a queue.
+But using PUBSUB means that all messages delivered to all subscribed consumers.
+
+> [!WARNING]
+> This broker doesn't support acknowledgements. If during message processing
+> Worker was suddenly killed the message is going to be lost.
+
+### ListQueue
+
+This broker creates a list of messages at some key. Adding new tasks will be done
+by appending them from the left side using `lpush`, and taking them from the right side using `brpop`.
+
+> [!WARNING]
+> This broker doesn't support acknowledgements. If during message processing
+> Worker was suddenly killed the message is going to be lost.
+
+### Stream
+
+Stream brokers use redis [stream type](https://redis.io/docs/latest/develop/data-types/streams/) to store and fetch messages.
+
+> [!TIP]
+> This broker **supports** acknowledgements and therefore is fine to use in cases when data durability is
+> required.
 
 ## RedisAsyncResultBackend configuration
 
@@ -85,18 +108,20 @@ RedisAsyncResultBackend parameters:
 * Any other keyword arguments are passed to `redis.asyncio.BlockingConnectionPool`.
   Notably, you can use `timeout` to set custom timeout in seconds for reconnects
   (or set it to `None` to try reconnects indefinitely).
-> IMPORTANT: **It is highly recommended to use expire time ​​in RedisAsyncResultBackend**
+
+> [!WARNING]
+> **It is highly recommended to use expire time in RedisAsyncResultBackend**
 > If you want to add expiration, either `result_ex_time` or `result_px_time` must be set.
->```python
-># First variant
->redis_async_result = RedisAsyncResultBackend(
->    redis_url="redis://localhost:6379",
->    result_ex_time=1000,
->)
+> ```python
+> # First variant
+> redis_async_result = RedisAsyncResultBackend(
+>     redis_url="redis://localhost:6379",
+>     result_ex_time=1000,
+> )
 >
-># Second variant
->redis_async_result = RedisAsyncResultBackend(
->    redis_url="redis://localhost:6379",
->    result_px_time=1000000,
->)
->```
+> # Second variant
+> redis_async_result = RedisAsyncResultBackend(
+>     redis_url="redis://localhost:6379",
+>     result_px_time=1000000,
+> )
+> ```

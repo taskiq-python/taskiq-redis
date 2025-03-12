@@ -16,10 +16,10 @@ from redis.asyncio import BlockingConnectionPool, Redis, Sentinel
 from redis.asyncio.cluster import RedisCluster
 from redis.asyncio.connection import Connection
 from taskiq import AsyncResultBackend
-from taskiq.abc.result_backend import TaskiqResult
 from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.compat import model_dump, model_validate
 from taskiq.depends.progress_tracker import TaskProgress
+from taskiq.result import TaskiqResult
 from taskiq.serializers import PickleSerializer
 
 from taskiq_redis.exceptions import (
@@ -34,8 +34,8 @@ else:
     from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    _Redis: TypeAlias = Redis[bytes]
-    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]
+    _Redis: TypeAlias = Redis[bytes]  # type: ignore
+    _BlockingConnectionPool: TypeAlias = BlockingConnectionPool[Connection]  # type: ignore
 else:
     _Redis: TypeAlias = Redis
     _BlockingConnectionPool: TypeAlias = BlockingConnectionPool
@@ -92,14 +92,10 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             ),
         )
         if unavailable_conditions:
-            raise ExpireTimeMustBeMoreThanZeroError(
-                "You must select one expire time param and it must be more than zero.",
-            )
+            raise ExpireTimeMustBeMoreThanZeroError
 
         if self.result_ex_time and self.result_px_time:
-            raise DuplicateExpireTimeSelectedError(
-                "Choose either result_ex_time or result_px_time.",
-            )
+            raise DuplicateExpireTimeSelectedError
 
     def _task_name(self, task_id: str) -> str:
         if self.prefix_str is None:
@@ -262,7 +258,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :raises ExpireTimeMustBeMoreThanZeroError: if result_ex_time
             and result_px_time are equal zero.
         """
-        self.redis: RedisCluster[bytes] = RedisCluster.from_url(
+        self.redis: "RedisCluster" = RedisCluster.from_url(
             redis_url,
             **connection_kwargs,
         )
@@ -279,14 +275,10 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
             ),
         )
         if unavailable_conditions:
-            raise ExpireTimeMustBeMoreThanZeroError(
-                "You must select one expire time param and it must be more than zero.",
-            )
+            raise ExpireTimeMustBeMoreThanZeroError
 
         if self.result_ex_time and self.result_px_time:
-            raise DuplicateExpireTimeSelectedError(
-                "Choose either result_ex_time or result_px_time.",
-            )
+            raise DuplicateExpireTimeSelectedError
 
     def _task_name(self, task_id: str) -> str:
         if self.prefix_str is None:
@@ -295,7 +287,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
 
     async def shutdown(self) -> None:
         """Closes redis connection."""
-        await self.redis.aclose()  # type: ignore[attr-defined]
+        await self.redis.aclose()
         await super().shutdown()
 
     async def set_result(
@@ -331,7 +323,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
 
         :returns: True if the result is ready else False.
         """
-        return bool(await self.redis.exists(self._task_name(task_id)))  # type: ignore[attr-defined]
+        return bool(await self.redis.exists(self._task_name(task_id)))
 
     async def get_result(
         self,
@@ -348,11 +340,11 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         """
         task_name = self._task_name(task_id)
         if self.keep_results:
-            result_value = await self.redis.get(  # type: ignore[attr-defined]
+            result_value = await self.redis.get(
                 name=task_name,
             )
         else:
-            result_value = await self.redis.getdel(  # type: ignore[attr-defined]
+            result_value = await self.redis.getdel(
                 name=task_name,
             )
 
@@ -404,7 +396,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :param task_id: task's id.
         :return: task's TaskProgress instance.
         """
-        result_value = await self.redis.get(  # type: ignore[attr-defined]
+        result_value = await self.redis.get(
             name=self._task_name(task_id) + PROGRESS_KEY_SUFFIX,
         )
 
@@ -469,14 +461,10 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
             ),
         )
         if unavailable_conditions:
-            raise ExpireTimeMustBeMoreThanZeroError(
-                "You must select one expire time param and it must be more than zero.",
-            )
+            raise ExpireTimeMustBeMoreThanZeroError
 
         if self.result_ex_time and self.result_px_time:
-            raise DuplicateExpireTimeSelectedError(
-                "Choose either result_ex_time or result_px_time.",
-            )
+            raise DuplicateExpireTimeSelectedError
 
     def _task_name(self, task_id: str) -> str:
         if self.prefix_str is None:
@@ -614,4 +602,4 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
     async def shutdown(self) -> None:
         """Shutdown sentinel connections."""
         for sentinel in self.sentinel.sentinels:
-            await sentinel.aclose()  # type: ignore[attr-defined]
+            await sentinel.aclose()
