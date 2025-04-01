@@ -5,7 +5,7 @@ import pytest
 from freezegun import freeze_time
 from taskiq import ScheduledTask
 
-from taskiq_redis.array_schedule_source import ArrayRedisScheduleSource
+from taskiq_redis.list_schedule_source import ListRedisScheduleSource
 from taskiq_redis.schedule_source import RedisScheduleSource
 
 
@@ -14,7 +14,7 @@ from taskiq_redis.schedule_source import RedisScheduleSource
 async def test_schedule_cron(redis_url: str) -> None:
     """Test adding a cron schedule."""
     prefix = uuid.uuid4().hex
-    source = ArrayRedisScheduleSource(redis_url, prefix=prefix)
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
         task_name="test_task",
         labels={},
@@ -32,7 +32,7 @@ async def test_schedule_cron(redis_url: str) -> None:
 async def test_schedule_from_past(redis_url: str) -> None:
     """Test adding a cron schedule."""
     prefix = uuid.uuid4().hex
-    source = ArrayRedisScheduleSource(redis_url, prefix=prefix)
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
         task_name="test_task",
         labels={},
@@ -57,7 +57,7 @@ async def test_schedule_from_past(redis_url: str) -> None:
 async def test_schedule_removal(redis_url: str) -> None:
     """Test adding a cron schedule."""
     prefix = uuid.uuid4().hex
-    source = ArrayRedisScheduleSource(redis_url, prefix=prefix)
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
         task_name="test_task",
         labels={},
@@ -82,7 +82,7 @@ async def test_schedule_removal(redis_url: str) -> None:
 async def test_deletion(redis_url: str) -> None:
     """Test adding a cron schedule."""
     prefix = uuid.uuid4().hex
-    source = ArrayRedisScheduleSource(redis_url, prefix=prefix)
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
         task_name="test_task",
         labels={},
@@ -121,7 +121,7 @@ async def test_migration(redis_url: str) -> None:
 
     old_schedules = await old_source.get_schedules()
 
-    source = ArrayRedisScheduleSource(
+    source = ListRedisScheduleSource(
         redis_url,
         prefix=new_prefix,
         skip_past_schedules=True,
