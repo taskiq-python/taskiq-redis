@@ -1,5 +1,6 @@
 """Package for redis integration."""
 
+from taskiq_redis.list_schedule_source import ListRedisScheduleSource
 from taskiq_redis.redis_backend import (
     RedisAsyncClusterResultBackend,
     RedisAsyncResultBackend,
@@ -25,6 +26,7 @@ __all__ = [
     "ListQueueBroker",
     "ListQueueClusterBroker",
     "ListQueueSentinelBroker",
+    "ListRedisScheduleSource",
     "PubSubBroker",
     "PubSubSentinelBroker",
     "RedisAsyncClusterResultBackend",

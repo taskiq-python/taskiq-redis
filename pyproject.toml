@@ -40,6 +40,7 @@ fakeredis = "^2"
 pre-commit = "^4"
 pytest-xdist = { version = "^3", extras = ["psutil"] }
 ruff = "^0"
+freezegun = "^1.5.1"
 
 [tool.mypy]
 strict = true
