@@ -125,3 +125,67 @@ RedisAsyncResultBackend parameters:
 >     result_px_time=1000000,
 > )
 > ```
+
+
+## Schedule sources
+
+
+You can use this package to add dynamic schedule sources. They are used to store
+schedules for taskiq scheduler.
+
+The advantage of using schedule sources from this package over default `LabelBased` source is that you can
+dynamically add schedules in it.
+
+We have two types of schedules:
+
+* `RedisScheduleSource`
+* `ListRedisScheduleSource`
+
+
+### RedisScheduleSource
+
+This source is super simple. It stores all schedules by key `{prefix}:{schedule_id}`. When scheduler requests
+schedules, it retrieves all values from redis that start with a given `prefix`.
+
+This is very ineficent and should not be used for high-volume schedules. Because if you have `1000` schedules, this scheduler will make at least `20` requests to retrieve them (we use `scan` and `mget` to minimize number of calls).
+
+### ListRedisScheduleSource
+
+This source holds values in lists.
+
+* For cron tasks it uses key `{prefix}:cron`.
+* For timed schedules it uses key `{prefix}:time:{time}` where `{time}` is actually time where schedules should run.
+
+The main advantage of this approach is that we only fetch tasks we need to run at a given time and do not perform any excesive calls to redis.
+
+
+### Migration from one source to another
+
+To migrate from `RedisScheduleSource` to `ListRedisScheduleSource` you can define the latter as this:
+
+```python
+# broker.py
+import asyncio
+import datetime
+
+from taskiq import TaskiqScheduler
+
+from taskiq_redis import ListRedisScheduleSource, RedisStreamBroker
+from taskiq_redis.schedule_source import RedisScheduleSource
+
+broker = RedisStreamBroker(url="redis://localhost:6379")
+
+old_source = RedisScheduleSource("redis://localhost/1", prefix="prefix1")
+array_source = ListRedisScheduleSource(
+    "redis://localhost/1",
+    prefix="prefix2",
+    # To migrate schedules from an old source.
+).with_migrate_from(
+    old_source,
+    # To delete schedules from an old source.
+    delete_schedules=True,
+)
+scheduler = TaskiqScheduler(broker, [array_source])
+```
+
+During startup the scheduler will try to migrate schedules from an old source to a new one. Please be sure to specify different prefixe just to avoid any kind of collision between these two.
