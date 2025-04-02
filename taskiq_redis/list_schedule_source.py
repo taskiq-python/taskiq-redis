@@ -13,7 +13,7 @@ logger = getLogger("taskiq.redis_schedule_source")
 
 
 class ListRedisScheduleSource(ScheduleSource):
-    """Schecule source based on arrays."""
+    """Schedule source based on arrays."""
 
     def __init__(
         self,
@@ -21,13 +21,13 @@ class ListRedisScheduleSource(ScheduleSource):
         prefix: str = "schedule",
         max_connection_pool_size: Optional[int] = None,
         serializer: Optional[TaskiqSerializer] = None,
-        bufffer_size: int = 50,
+        buffer_size: int = 50,
         skip_past_schedules: bool = False,
         **connection_kwargs: Any,
     ) -> None:
         super().__init__()
         self._prefix = prefix
-        self._buffer_size = bufffer_size
+        self._buffer_size = buffer_size
         self._connection_pool = BlockingConnectionPool.from_url(
             url=url,
             max_connections=max_connection_pool_size,
@@ -185,11 +185,11 @@ class ListRedisScheduleSource(ScheduleSource):
         async with Redis(connection_pool=self._connection_pool) as redis:
             buffer = []
             crons = await redis.lrange(self._get_cron_key(), 0, -1)  # type: ignore
-            logger.debug("Got cron scheduleds: %s", crons)
+            logger.debug("Got cron schedules: %s", crons)
             if crons:
                 buffer.extend(crons)
             timed.extend(await redis.lrange(self._get_time_key(current_time), 0, -1))  # type: ignore
-            logger.debug("Got timed scheduleds: %s", crons)
+            logger.debug("Got timed schedules: %s", len(timed))
             if timed:
                 buffer.extend(timed)
             while buffer:
