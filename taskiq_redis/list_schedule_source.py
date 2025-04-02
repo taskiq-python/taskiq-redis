@@ -189,7 +189,7 @@ class ListRedisScheduleSource(ScheduleSource):
             if crons:
                 buffer.extend(crons)
             timed.extend(await redis.lrange(self._get_time_key(current_time), 0, -1))  # type: ignore
-            logger.debug("Got timed schedules: %s", len(timed))
+            logger.debug("Got %d timed schedules", len(timed))
             if timed:
                 buffer.extend(timed)
             while buffer:
