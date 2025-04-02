@@ -185,7 +185,7 @@ class ListRedisScheduleSource(ScheduleSource):
         async with Redis(connection_pool=self._connection_pool) as redis:
             buffer = []
             crons = await redis.lrange(self._get_cron_key(), 0, -1)  # type: ignore
-            logger.debug("Got cron schedules: %s", crons)
+            logger.debug("Got %d cron schedules", len(crons))
             if crons:
                 buffer.extend(crons)
             timed.extend(await redis.lrange(self._get_time_key(current_time), 0, -1))  # type: ignore
