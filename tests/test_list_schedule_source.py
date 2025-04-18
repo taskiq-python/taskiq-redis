@@ -44,12 +44,14 @@ async def test_schedule_from_past(redis_url: str) -> None:
     await source.add_schedule(schedule)
     # When running for the first time, the scheduler will get all the
     # schedules that are in the past.
-    scehdules = await source.get_schedules()
-    assert scehdules == [schedule]
+    schedules = await source.get_schedules()
+    assert schedules == [schedule]
+    for schedule in schedules:
+        await source.post_send(schedule)
     # After getting the schedules for the second time,
     # all the schedules in the past are ignored.
-    scehdules = await source.get_schedules()
-    assert scehdules == []
+    schedules = await source.get_schedules()
+    assert schedules == []
 
 
 @pytest.mark.anyio
