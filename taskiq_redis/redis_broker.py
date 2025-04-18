@@ -164,8 +164,10 @@ class RedisStreamBroker(BaseRedisBroker):
         consumer_name: Optional[str] = None,
         consumer_id: str = "$",
         mkstream: bool = True,
-        xread_block: int = 10000,
+        xread_block: int = 2000,
         maxlen: Optional[int] = None,
+        idle_timeout: int = 600000,  # 10 minutes
+        unacknowledged_batch_size: int = 100,
         additional_streams: Optional[Dict[str, str]] = None,
         **connection_kwargs: Any,
     ) -> None:
@@ -189,6 +191,8 @@ class RedisStreamBroker(BaseRedisBroker):
             trims (the old values of) the stream each time a new element is added
         :param additional_streams: additional streams to read from.
             Each key is a stream name, value is a consumer id.
+        :param redeliver_timeout: time in ms to wait before redelivering a message.
+        :param unacknowledged_batch_size: number of unacknowledged messages to fetch.
         """
         super().__init__(
             url,
@@ -205,6 +209,8 @@ class RedisStreamBroker(BaseRedisBroker):
         self.block = xread_block
         self.maxlen = maxlen
         self.additional_streams = additional_streams or {}
+        self.idle_timeout = idle_timeout
+        self.unacknowledged_batch_size = unacknowledged_batch_size
 
     async def _declare_consumer_group(self) -> None:
         """
@@ -260,6 +266,7 @@ class RedisStreamBroker(BaseRedisBroker):
         """Listen to incoming messages."""
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
             while True:
+                logger.debug("Starting fetching new messages")
                 fetched = await redis_conn.xreadgroup(
                     self.consumer_group_name,
                     self.consumer_name,
@@ -277,3 +284,29 @@ class RedisStreamBroker(BaseRedisBroker):
                             data=msg[b"data"],
                             ack=self._ack_generator(msg_id),
                         )
+                logger.debug("Starting fetching unacknowledged messages")
+                for stream in [self.queue_name, *self.additional_streams.keys()]:
+                    lock = redis_conn.lock(
+                        f"autoclaim:{self.consumer_group_name}:{stream}",
+                    )
+                    if await lock.locked():
+                        continue
+                    async with lock:
+                        pending = await redis_conn.xautoclaim(
+                            name=stream,
+                            groupname=self.consumer_group_name,
+                            consumername=self.consumer_name,
+                            min_idle_time=self.idle_timeout,
+                            count=self.unacknowledged_batch_size,
+                        )
+                        logger.debug(
+                            "Found %d pending messages in stream %s",
+                            len(pending),
+                            stream,
+                        )
+                        for msg_id, msg in pending[1]:
+                            logger.debug("Received message: %s", msg)
+                            yield AckableMessage(
+                                data=msg[b"data"],
+                                ack=self._ack_generator(msg_id),
+                            )
