@@ -1,4 +1,5 @@
 import sys
+import warnings
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple
 
@@ -53,6 +54,12 @@ class RedisScheduleSource(ScheduleSource):
         serializer: Optional[TaskiqSerializer] = None,
         **connection_kwargs: Any,
     ) -> None:
+        warnings.warn(
+            "RedisScheduleSource is deprecated. "
+            "Please switch to ListRedisScheduleSource",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.prefix = prefix
         self.connection_pool: _BlockingConnectionPool = BlockingConnectionPool.from_url(
             url=url,

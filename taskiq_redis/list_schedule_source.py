@@ -25,6 +25,17 @@ class ListRedisScheduleSource(ScheduleSource):
         skip_past_schedules: bool = False,
         **connection_kwargs: Any,
     ) -> None:
+        """
+        Create a new schedule source.
+
+        :param url: Redis URL
+        :param prefix: Prefix for all the keys
+        :param max_connection_pool_size: Maximum size of the connection pool
+        :param serializer: Serializer to use for the schedules
+        :param buffer_size: Buffer size for getting schedules
+        :param skip_past_schedules: Skip schedules that are in the past.
+        :param connection_kwargs: Additional connection kwargs
+        """
         super().__init__()
         self._prefix = prefix
         self._buffer_size = buffer_size
@@ -179,7 +190,7 @@ class ListRedisScheduleSource(ScheduleSource):
         current_time = datetime.datetime.now(datetime.timezone.utc)
         timed: list[bytes] = []
         # Only during first run, we need to get previous time schedules
-        if self._is_first_run and not self._skip_past_schedules:
+        if not self._skip_past_schedules:
             timed = await self._get_previous_time_schedules()
             self._is_first_run = False
         async with Redis(connection_pool=self._connection_pool) as redis:
