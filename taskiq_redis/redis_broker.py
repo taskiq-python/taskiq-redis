@@ -168,6 +168,7 @@ class RedisStreamBroker(BaseRedisBroker):
         maxlen: Optional[int] = None,
         idle_timeout: int = 600000,  # 10 minutes
         unacknowledged_batch_size: int = 100,
+        xread_count: Optional[int] = 100,
         additional_streams: Optional[Dict[str, str]] = None,
         **connection_kwargs: Any,
     ) -> None:
@@ -189,6 +190,7 @@ class RedisStreamBroker(BaseRedisBroker):
             Better to set it to a bigger value, to avoid unnecessary calls.
         :param maxlen: sets the maximum length of the stream
             trims (the old values of) the stream each time a new element is added
+        :param xread_count: number of messages to fetch from the stream at once.
         :param additional_streams: additional streams to read from.
             Each key is a stream name, value is a consumer id.
         :param redeliver_timeout: time in ms to wait before redelivering a message.
@@ -211,6 +213,7 @@ class RedisStreamBroker(BaseRedisBroker):
         self.additional_streams = additional_streams or {}
         self.idle_timeout = idle_timeout
         self.unacknowledged_batch_size = unacknowledged_batch_size
+        self.count = xread_count
 
     async def _declare_consumer_group(self) -> None:
         """
@@ -276,6 +279,7 @@ class RedisStreamBroker(BaseRedisBroker):
                     },
                     block=self.block,
                     noack=False,
+                    count=self.count,
                 )
                 for _, msg_list in fetched:
                     for msg_id, msg in msg_list:
