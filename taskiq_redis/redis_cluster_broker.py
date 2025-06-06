@@ -92,6 +92,7 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
         consumer_id: str = "$",
         mkstream: bool = True,
         xread_block: int = 10000,
+        maxlen: Optional[int] = None,
         additional_streams: Optional[Dict[str, str]] = None,
         **connection_kwargs: Any,
     ) -> None:
@@ -111,6 +112,8 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
         :param mkstream: create stream if it does not exist.
         :param xread_block: block time in ms for xreadgroup.
             Better to set it to a bigger value, to avoid unnecessary calls.
+        :param maxlen: sets the maximum length of the stream
+            trims (the old values of) the stream each time a new element is added
         :param additional_streams: additional streams to read from.
             Each key is a stream name, value is a consumer id.
         """
@@ -125,6 +128,7 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
         self.consumer_id = consumer_id
         self.mkstream = mkstream
         self.block = xread_block
+        self.maxlen = maxlen
         self.additional_streams = additional_streams or {}
 
     async def _declare_consumer_group(self) -> None:
@@ -154,7 +158,11 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
 
         :param message: message to append.
         """
-        await self.redis.xadd(self.queue_name, {b"data": message.message})
+        await self.redis.xadd(
+            self.queue_name,
+            {b"data": message.message},
+            maxlen=self.maxlen,
+        )
 
     def _ack_generator(self, id: str) -> Callable[[], Awaitable[None]]:
         async def _ack() -> None:
