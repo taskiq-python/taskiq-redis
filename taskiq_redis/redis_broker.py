@@ -166,6 +166,7 @@ class RedisStreamBroker(BaseRedisBroker):
         mkstream: bool = True,
         xread_block: int = 2000,
         maxlen: Optional[int] = None,
+        approximate: bool = True,
         idle_timeout: int = 600000,  # 10 minutes
         unacknowledged_batch_size: int = 100,
         xread_count: Optional[int] = 100,
@@ -190,6 +191,8 @@ class RedisStreamBroker(BaseRedisBroker):
             Better to set it to a bigger value, to avoid unnecessary calls.
         :param maxlen: sets the maximum length of the stream
             trims (the old values of) the stream each time a new element is added
+        :param approximate: decides wether to trim the stream immediately (False) or
+            later on (True)
         :param xread_count: number of messages to fetch from the stream at once.
         :param additional_streams: additional streams to read from.
             Each key is a stream name, value is a consumer id.
@@ -210,6 +213,7 @@ class RedisStreamBroker(BaseRedisBroker):
         self.mkstream = mkstream
         self.block = xread_block
         self.maxlen = maxlen
+        self.approximate = approximate
         self.additional_streams = additional_streams or {}
         self.idle_timeout = idle_timeout
         self.unacknowledged_batch_size = unacknowledged_batch_size
@@ -252,6 +256,7 @@ class RedisStreamBroker(BaseRedisBroker):
                 self.queue_name,
                 {b"data": message.message},
                 maxlen=self.maxlen,
+                approximate=self.approximate,
             )
 
     def _ack_generator(self, id: str) -> Callable[[], Awaitable[None]]:

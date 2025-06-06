@@ -3,6 +3,7 @@ import uuid
 from typing import List, Tuple, Union
 
 import pytest
+from redis.asyncio import Redis
 from taskiq import AckableMessage, AsyncBroker, BrokerMessage
 
 from taskiq_redis import (
@@ -316,7 +317,7 @@ async def test_streams_sentinel_broker(
     redis_sentinel_master_name: str,
 ) -> None:
     """
-    Test that messages are published and read correctly by ListQueueSentinelBroker.
+    Test that messages are published and read correctly by RedisStreamSentinelBroker.
 
     We create two workers that listen and send a message to them.
     Expect only one worker to receive the same message we sent.
@@ -337,4 +338,98 @@ async def test_streams_sentinel_broker(
     assert result.data == valid_broker_message.message
     await result.ack()  # type: ignore
     worker_task.cancel()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_maxlen_in_stream_broker(
+    redis_url: str,
+    valid_broker_message: BrokerMessage,
+) -> None:
+    """
+    Test that maxlen parameter works correctly in RedisStreamBroker.
+
+    We create RedisStreamBroker, fill in them with messages in the amount of
+    > maxlen and check that only maxlen messages are in the stream.
+    """
+    maxlen = 20
+
+    broker = RedisStreamBroker(
+        url=redis_url,
+        maxlen=maxlen,
+        approximate=False,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+    )
+
+    await broker.startup()
+
+    for _ in range(maxlen * 2):
+        await broker.kick(valid_broker_message)
+
+    async with Redis(connection_pool=broker.connection_pool) as redis:
+        assert await redis.xlen(broker.queue_name) == maxlen
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_maxlen_in_cluster_stream_broker(
+    redis_cluster_url: str,
+    valid_broker_message: BrokerMessage,
+) -> None:
+    """
+    Test that maxlen parameter works correctly in RedisStreamClusterBroker.
+
+    We create RedisStreamClusterBroker, fill it with messages in the amount of
+    > maxlen and check that only maxlen messages are in the stream.
+    """
+    maxlen = 20
+
+    broker = RedisStreamClusterBroker(
+        maxlen=maxlen,
+        approximate=False,
+        url=redis_cluster_url,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+    )
+
+    await broker.startup()
+
+    for _ in range(maxlen * 2):
+        await broker.kick(valid_broker_message)
+
+    assert await broker.redis.xlen(broker.queue_name) == maxlen
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_maxlen_in_sentinel_stream_broker(
+    redis_sentinel_master_name: str,
+    redis_sentinels: List[Tuple[str, int]],
+    valid_broker_message: BrokerMessage,
+) -> None:
+    """
+    Test that maxlen parameter works correctly in RedisStreamSentinelBroker.
+
+    We create RedisStreamSentinelBroker, fill it with messages in the amount of
+    > maxlen and check that only maxlen messages are in the stream.
+    """
+    maxlen = 20
+
+    broker = RedisStreamSentinelBroker(
+        maxlen=maxlen,
+        approximate=False,
+        sentinels=redis_sentinels,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+        master_name=redis_sentinel_master_name,
+    )
+
+    await broker.startup()
+
+    for _ in range(maxlen * 2):
+        await broker.kick(valid_broker_message)
+
+    async with broker._acquire_master_conn() as redis_conn:
+        assert await redis_conn.xlen(broker.queue_name) == maxlen
     await broker.shutdown()
