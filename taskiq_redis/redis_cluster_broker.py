@@ -93,6 +93,7 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
         mkstream: bool = True,
         xread_block: int = 10000,
         maxlen: Optional[int] = None,
+        approximate: bool = True,
         additional_streams: Optional[Dict[str, str]] = None,
         **connection_kwargs: Any,
     ) -> None:
@@ -114,6 +115,8 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
             Better to set it to a bigger value, to avoid unnecessary calls.
         :param maxlen: sets the maximum length of the stream
             trims (the old values of) the stream each time a new element is added
+        :param approximate: decides wether to trim the stream immediately (False) or
+            later on (True)
         :param additional_streams: additional streams to read from.
             Each key is a stream name, value is a consumer id.
         """
@@ -129,6 +132,7 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
         self.mkstream = mkstream
         self.block = xread_block
         self.maxlen = maxlen
+        self.approximate = approximate
         self.additional_streams = additional_streams or {}
 
     async def _declare_consumer_group(self) -> None:
@@ -162,6 +166,7 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
             self.queue_name,
             {b"data": message.message},
             maxlen=self.maxlen,
+            approximate=self.approximate,
         )
 
     def _ack_generator(self, id: str) -> Callable[[], Awaitable[None]]:
