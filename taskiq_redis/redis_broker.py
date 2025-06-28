@@ -310,7 +310,7 @@ class RedisStreamBroker(BaseRedisBroker):
                         )
                         logger.debug(
                             "Found %d pending messages in stream %s",
-                            len(pending),
+                            len(pending[1]),
                             stream,
                         )
                         for msg_id, msg in pending[1]:
