@@ -131,7 +131,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             redis_set_params["px"] = self.result_px_time
 
         async with Redis(connection_pool=self.redis_pool) as redis:
-            await redis.set(**redis_set_params)  # type: ignore
+            await redis.set(**redis_set_params)
 
     async def is_result_ready(self, task_id: str) -> bool:
         """
@@ -205,7 +205,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
             redis_set_params["px"] = self.result_px_time
 
         async with Redis(connection_pool=self.redis_pool) as redis:
-            await redis.set(**redis_set_params)  # type: ignore
+            await redis.set(**redis_set_params)
 
     async def get_progress(
         self,

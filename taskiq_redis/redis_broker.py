@@ -122,7 +122,7 @@ class ListQueueBroker(BaseRedisBroker):
         """
         queue_name = message.labels.get("queue_name") or self.queue_name
         async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            await redis_conn.lpush(queue_name, message.message)  # type: ignore
+            await redis_conn.lpush(queue_name, message.message)
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -137,7 +137,7 @@ class ListQueueBroker(BaseRedisBroker):
         while True:
             try:
                 async with Redis(connection_pool=self.connection_pool) as redis_conn:
-                    yield (await redis_conn.brpop(self.queue_name))[  # type: ignore
+                    yield (await redis_conn.brpop(self.queue_name))[
                         redis_brpop_data_position
                     ]
             except ConnectionError as exc:
@@ -280,7 +280,7 @@ class RedisStreamBroker(BaseRedisBroker):
                     self.consumer_name,
                     {
                         self.queue_name: ">",
-                        **self.additional_streams,  # type: ignore
+                        **self.additional_streams,
                     },
                     block=self.block,
                     noack=False,
