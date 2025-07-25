@@ -55,7 +55,8 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
 
         :param message: message to append.
         """
-        await self.redis.lpush(self.queue_name, message.message)  # type: ignore
+        queue_name = message.labels.get("queue_name") or self.queue_name
+        await self.redis.lpush(queue_name, message.message)  # type: ignore
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -162,8 +163,9 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
 
         :param message: message to append.
         """
+        queue_name = message.labels.get("queue_name") or self.queue_name
         await self.redis.xadd(
-            self.queue_name,
+            queue_name,
             {b"data": message.message},
             maxlen=self.maxlen,
             approximate=self.approximate,
