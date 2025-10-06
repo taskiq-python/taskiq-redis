@@ -189,3 +189,17 @@ scheduler = TaskiqScheduler(broker, [array_source])
 ```
 
 During startup the scheduler will try to migrate schedules from an old source to a new one. Please be sure to specify different prefixe just to avoid any kind of collision between these two.
+
+
+## Dynamic queue names
+
+
+Brokers supports dynamic queue names, allowing you to specify different queues when kicking tasks. This is useful for routing tasks to specific queues based on runtime conditions, such as priority levels, tenant isolation, or environment-specific processing.
+
+Simply pass the desired queue name as message's label when kicking a task to override the broker's default queue configuration.
+
+```python
+@broker.task(queue_name="low_priority")
+async def low_priority_task() -> None:
+    print("I don't mind waiting a little longer")
+```

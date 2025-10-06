@@ -230,9 +230,10 @@ class RedisStreamSentinelBroker(BaseSentinelBroker):
 
         :param message: message to append.
         """
+        queue_name = message.labels.get("queue_name") or self.queue_name
         async with self._acquire_master_conn() as redis_conn:
             await redis_conn.xadd(
-                self.queue_name,
+                queue_name,
                 {b"data": message.message},
                 maxlen=self.maxlen,
                 approximate=self.approximate,
