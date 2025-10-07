@@ -260,11 +260,11 @@ class RedisStreamBroker(BaseRedisBroker):
                 approximate=self.approximate,
             )
 
-    def _ack_generator(self, id: str) -> Callable[[], Awaitable[None]]:
+    def _ack_generator(self, id: str, queue_name: str) -> Callable[[], Awaitable[None]]:
         async def _ack() -> None:
             async with Redis(connection_pool=self.connection_pool) as redis_conn:
                 await redis_conn.xack(
-                    self.queue_name,
+                    queue_name,
                     self.consumer_group_name,
                     id,
                 )
@@ -287,12 +287,12 @@ class RedisStreamBroker(BaseRedisBroker):
                     noack=False,
                     count=self.count,
                 )
-                for _, msg_list in fetched:
+                for stream, msg_list in fetched:
                     for msg_id, msg in msg_list:
                         logger.debug("Received message: %s", msg)
                         yield AckableMessage(
                             data=msg[b"data"],
-                            ack=self._ack_generator(msg_id),
+                            ack=self._ack_generator(id=msg_id, queue_name=stream),
                         )
                 logger.debug("Starting fetching unacknowledged messages")
                 for stream in [self.queue_name, *self.additional_streams.keys()]:
@@ -318,5 +318,5 @@ class RedisStreamBroker(BaseRedisBroker):
                             logger.debug("Received message: %s", msg)
                             yield AckableMessage(
                                 data=msg[b"data"],
-                                ack=self._ack_generator(msg_id),
+                                ack=self._ack_generator(id=msg_id, queue_name=stream),
                             )
