@@ -239,11 +239,11 @@ class RedisStreamSentinelBroker(BaseSentinelBroker):
                 approximate=self.approximate,
             )
 
-    def _ack_generator(self, id: str) -> Callable[[], Awaitable[None]]:
+    def _ack_generator(self, id: str, queue_name: str) -> Callable[[], Awaitable[None]]:
         async def _ack() -> None:
             async with self._acquire_master_conn() as redis_conn:
                 await redis_conn.xack(
-                    self.queue_name,
+                    queue_name,
                     self.consumer_group_name,
                     id,
                 )
@@ -264,10 +264,10 @@ class RedisStreamSentinelBroker(BaseSentinelBroker):
                     block=self.block,
                     noack=False,
                 )
-                for _, msg_list in fetched:
+                for stream, msg_list in fetched:
                     for msg_id, msg in msg_list:
                         logger.debug("Received message: %s", msg)
                         yield AckableMessage(
                             data=msg[b"data"],
-                            ack=self._ack_generator(msg_id),
+                            ack=self._ack_generator(id=msg_id, queue_name=stream),
                         )
