@@ -1,7 +1,6 @@
 import asyncio
 import datetime as dt
 import uuid
-from typing import List, Tuple
 
 import pytest
 from taskiq import ScheduledTask
@@ -243,7 +242,7 @@ async def test_cluster_get_schedules(redis_cluster_url: str) -> None:
 
 @pytest.mark.anyio
 async def test_sentinel_set_schedule(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     prefix = uuid.uuid4().hex
@@ -267,7 +266,7 @@ async def test_sentinel_set_schedule(
 
 @pytest.mark.anyio
 async def test_sentinel_delete_schedule(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     prefix = uuid.uuid4().hex
@@ -295,7 +294,7 @@ async def test_sentinel_delete_schedule(
 
 @pytest.mark.anyio
 async def test_sentinel_post_run_cron(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     prefix = uuid.uuid4().hex
@@ -320,7 +319,7 @@ async def test_sentinel_post_run_cron(
 
 @pytest.mark.anyio
 async def test_sentinel_post_run_time(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     prefix = uuid.uuid4().hex
@@ -345,7 +344,7 @@ async def test_sentinel_post_run_time(
 
 @pytest.mark.anyio
 async def test_sentinel_buffer(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     prefix = uuid.uuid4().hex

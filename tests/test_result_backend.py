@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from typing import List, Tuple
 
 import pytest
 from taskiq import TaskiqResult
@@ -25,7 +24,7 @@ async def test_set_result_success(redis_url: str) -> None:
         redis_url=redis_url,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -58,7 +57,7 @@ async def test_fetch_without_logs(redis_url: str) -> None:
         redis_url=redis_url,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -92,7 +91,7 @@ async def test_remove_results_after_reading(redis_url: str) -> None:
         keep_results=False,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -122,7 +121,7 @@ async def test_keep_results_after_reading(redis_url: str) -> None:
         keep_results=True,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -153,7 +152,7 @@ async def test_set_result_max_connections(redis_url: str) -> None:
     )
 
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -182,7 +181,7 @@ async def test_set_result_success_cluster(redis_cluster_url: str) -> None:
         redis_url=redis_cluster_url,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -215,7 +214,7 @@ async def test_fetch_without_logs_cluster(redis_cluster_url: str) -> None:
         redis_url=redis_cluster_url,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -249,7 +248,7 @@ async def test_remove_results_after_reading_cluster(redis_cluster_url: str) -> N
         keep_results=False,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -279,7 +278,7 @@ async def test_keep_results_after_reading_cluster(redis_cluster_url: str) -> Non
         keep_results=True,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -298,7 +297,7 @@ async def test_keep_results_after_reading_cluster(redis_cluster_url: str) -> Non
 
 @pytest.mark.anyio
 async def test_set_result_success_sentinel(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -312,7 +311,7 @@ async def test_set_result_success_sentinel(
         master_name=redis_sentinel_master_name,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -336,7 +335,7 @@ async def test_set_result_success_sentinel(
 
 @pytest.mark.anyio
 async def test_fetch_without_logs_sentinel(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -350,7 +349,7 @@ async def test_fetch_without_logs_sentinel(
         master_name=redis_sentinel_master_name,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -374,7 +373,7 @@ async def test_fetch_without_logs_sentinel(
 
 @pytest.mark.anyio
 async def test_remove_results_after_reading_sentinel(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -389,7 +388,7 @@ async def test_remove_results_after_reading_sentinel(
         keep_results=False,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -409,7 +408,7 @@ async def test_remove_results_after_reading_sentinel(
 
 @pytest.mark.anyio
 async def test_keep_results_after_reading_sentinel(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -424,7 +423,7 @@ async def test_keep_results_after_reading_sentinel(
         keep_results=True,
     )
     task_id = uuid.uuid4().hex
-    result: "TaskiqResult[int]" = TaskiqResult(
+    result: TaskiqResult[int] = TaskiqResult(
         is_err=True,
         log="My Log",
         return_value=11,
@@ -521,7 +520,7 @@ async def test_set_progress_cluster(redis_cluster_url: str) -> None:
 
 @pytest.mark.anyio
 async def test_set_progress_sentinel(
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """

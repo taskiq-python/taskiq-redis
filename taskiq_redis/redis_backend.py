@@ -1,15 +1,6 @@
-import sys
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    AsyncIterator,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
 
 from redis.asyncio import BlockingConnectionPool, Redis, Sentinel
 from redis.asyncio.cluster import RedisCluster
@@ -26,11 +17,6 @@ from taskiq_redis.exceptions import (
     ExpireTimeMustBeMoreThanZeroError,
     ResultIsMissingError,
 )
-
-if sys.version_info >= (3, 10):
-    from typing import TypeAlias
-else:
-    from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     _Redis: TypeAlias = Redis[bytes]  # type: ignore
@@ -51,11 +37,11 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         self,
         redis_url: str,
         keep_results: bool = True,
-        result_ex_time: Optional[int] = None,
-        result_px_time: Optional[int] = None,
-        max_connection_pool_size: Optional[int] = None,
-        serializer: Optional[TaskiqSerializer] = None,
-        prefix_str: Optional[str] = None,
+        result_ex_time: int | None = None,
+        result_px_time: int | None = None,
+        max_connection_pool_size: int | None = None,
+        serializer: TaskiqSerializer | None = None,
+        prefix_str: str | None = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -205,7 +191,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
     async def get_progress(
         self,
         task_id: str,
-    ) -> Union[TaskProgress[_ReturnType], None]:
+    ) -> TaskProgress[_ReturnType] | None:
         """
         Gets progress results from the task.
 
@@ -233,10 +219,10 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         self,
         redis_url: str,
         keep_results: bool = True,
-        result_ex_time: Optional[int] = None,
-        result_px_time: Optional[int] = None,
-        serializer: Optional[TaskiqSerializer] = None,
-        prefix_str: Optional[str] = None,
+        result_ex_time: int | None = None,
+        result_px_time: int | None = None,
+        serializer: TaskiqSerializer | None = None,
+        prefix_str: str | None = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -253,7 +239,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :raises ExpireTimeMustBeMoreThanZeroError: if result_ex_time
             and result_px_time are equal zero.
         """
-        self.redis: "RedisCluster" = RedisCluster.from_url(
+        self.redis: RedisCluster = RedisCluster.from_url(
             redis_url,
             **connection_kwargs,
         )
@@ -382,7 +368,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
     async def get_progress(
         self,
         task_id: str,
-    ) -> Union[TaskProgress[_ReturnType], None]:
+    ) -> TaskProgress[_ReturnType] | None:
         """
         Gets progress results from the task.
 
@@ -407,15 +393,15 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
 
     def __init__(
         self,
-        sentinels: List[Tuple[str, int]],
+        sentinels: list[tuple[str, int]],
         master_name: str,
         keep_results: bool = True,
-        result_ex_time: Optional[int] = None,
-        result_px_time: Optional[int] = None,
+        result_ex_time: int | None = None,
+        result_px_time: int | None = None,
         min_other_sentinels: int = 0,
-        sentinel_kwargs: Optional[Any] = None,
-        serializer: Optional[TaskiqSerializer] = None,
-        prefix_str: Optional[str] = None,
+        sentinel_kwargs: Any | None = None,
+        serializer: TaskiqSerializer | None = None,
+        prefix_str: str | None = None,
         **connection_kwargs: Any,
     ) -> None:
         """
@@ -568,7 +554,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
     async def get_progress(
         self,
         task_id: str,
-    ) -> Union[TaskProgress[_ReturnType], None]:
+    ) -> TaskProgress[_ReturnType] | None:
         """
         Gets progress results from the task.
 

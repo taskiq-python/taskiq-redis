@@ -1,7 +1,7 @@
-import sys
 import warnings
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, AsyncIterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 from redis.asyncio import (
     BlockingConnectionPool,
@@ -15,11 +15,6 @@ from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.compat import model_dump, model_validate
 from taskiq.scheduler.scheduled_task import ScheduledTask
 from taskiq.serializers import PickleSerializer
-
-if sys.version_info >= (3, 10):
-    from typing import TypeAlias
-else:
-    from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     _Redis: TypeAlias = Redis[bytes]  # type: ignore
@@ -50,8 +45,8 @@ class RedisScheduleSource(ScheduleSource):
         url: str,
         prefix: str = "schedule",
         buffer_size: int = 50,
-        max_connection_pool_size: Optional[int] = None,
-        serializer: Optional[TaskiqSerializer] = None,
+        max_connection_pool_size: int | None = None,
+        serializer: TaskiqSerializer | None = None,
         **connection_kwargs: Any,
     ) -> None:
         warnings.warn(
@@ -89,7 +84,7 @@ class RedisScheduleSource(ScheduleSource):
                 self.serializer.dumpb(model_dump(schedule)),
             )
 
-    async def get_schedules(self) -> List[ScheduledTask]:
+    async def get_schedules(self) -> list[ScheduledTask]:
         """
         Get all schedules from redis.
 
@@ -143,11 +138,11 @@ class RedisClusterScheduleSource(ScheduleSource):
         self,
         url: str,
         prefix: str = "schedule",
-        serializer: Optional[TaskiqSerializer] = None,
+        serializer: TaskiqSerializer | None = None,
         **connection_kwargs: Any,
     ) -> None:
         self.prefix = prefix
-        self.redis: "RedisCluster" = RedisCluster.from_url(
+        self.redis: RedisCluster = RedisCluster.from_url(
             url,
             **connection_kwargs,
         )
@@ -171,7 +166,7 @@ class RedisClusterScheduleSource(ScheduleSource):
             self.serializer.dumpb(model_dump(schedule)),
         )
 
-    async def get_schedules(self) -> List[ScheduledTask]:
+    async def get_schedules(self) -> list[ScheduledTask]:
         """
         Get all schedules from redis.
 
@@ -218,13 +213,13 @@ class RedisSentinelScheduleSource(ScheduleSource):
 
     def __init__(
         self,
-        sentinels: List[Tuple[str, int]],
+        sentinels: list[tuple[str, int]],
         master_name: str,
         prefix: str = "schedule",
         buffer_size: int = 50,
-        serializer: Optional[TaskiqSerializer] = None,
+        serializer: TaskiqSerializer | None = None,
         min_other_sentinels: int = 0,
-        sentinel_kwargs: Optional[Any] = None,
+        sentinel_kwargs: Any | None = None,
         **connection_kwargs: Any,
     ) -> None:
         self.prefix = prefix
@@ -263,7 +258,7 @@ class RedisSentinelScheduleSource(ScheduleSource):
                 self.serializer.dumpb(model_dump(schedule)),
             )
 
-    async def get_schedules(self) -> List[ScheduledTask]:
+    async def get_schedules(self) -> list[ScheduledTask]:
         """
         Get all schedules from redis.
 
