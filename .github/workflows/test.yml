@@ -1,11 +1,17 @@
 name: Testing taskiq-redis
 
 on:
-  push:
-    branches:
-      - main
-      - develop
   pull_request:
+    paths-ignore:
+      - '*.md'
+  push:
+    paths-ignore:
+      - '*.md'
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
 
 jobs:
   lint:
