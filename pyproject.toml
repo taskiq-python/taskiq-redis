@@ -127,3 +127,9 @@ allow-magic-value-types = ["int", "str", "float"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["taskiq_dependencies.Depends", "taskiq.TaskiqDepends"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # about deprecated RedisScheduleSource usage - delete after removing RedisScheduleSource
+    'ignore:RedisScheduleSource is deprecated:DeprecationWarning',
+]
