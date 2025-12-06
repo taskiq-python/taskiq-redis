@@ -1,5 +1,4 @@
 import os
-from typing import List, Tuple
 
 import pytest
 
@@ -44,7 +43,7 @@ def redis_cluster_url() -> str:
 
 
 @pytest.fixture
-def redis_sentinels() -> List[Tuple[str, int]]:
+def redis_sentinels() -> list[tuple[str, int]]:
     """
     List of redis sentinel hosts.
 

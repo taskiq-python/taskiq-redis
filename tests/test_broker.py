@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from typing import List, Tuple, Union
 
 import pytest
 from redis.asyncio import Redis
@@ -26,7 +25,7 @@ def test_no_url_should_raise_typeerror() -> None:
 
 async def get_message(
     broker: AsyncBroker,
-) -> Union[bytes, AckableMessage]:
+) -> bytes | AckableMessage:
     """
     Get a message from the broker.
 
@@ -253,7 +252,7 @@ async def test_stream_cluster_broker(
 @pytest.mark.anyio
 async def test_pub_sub_sentinel_broker(
     valid_broker_message: BrokerMessage,
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -284,7 +283,7 @@ async def test_pub_sub_sentinel_broker(
 @pytest.mark.anyio
 async def test_list_queue_sentinel_broker(
     valid_broker_message: BrokerMessage,
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -313,7 +312,7 @@ async def test_list_queue_sentinel_broker(
 @pytest.mark.anyio
 async def test_streams_sentinel_broker(
     valid_broker_message: BrokerMessage,
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     redis_sentinel_master_name: str,
 ) -> None:
     """
@@ -405,7 +404,7 @@ async def test_maxlen_in_cluster_stream_broker(
 @pytest.mark.anyio
 async def test_maxlen_in_sentinel_stream_broker(
     redis_sentinel_master_name: str,
-    redis_sentinels: List[Tuple[str, int]],
+    redis_sentinels: list[tuple[str, int]],
     valid_broker_message: BrokerMessage,
 ) -> None:
     """

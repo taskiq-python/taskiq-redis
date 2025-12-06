@@ -1,62 +1,65 @@
 name: Testing taskiq-redis
 
 on:
-  push:
-    branches:
-      - main
-      - develop
   pull_request:
+    paths-ignore:
+      - '*.md'
+  push:
+    paths-ignore:
+      - '*.md'
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
 
 jobs:
   lint:
     strategy:
       matrix:
-        cmd:
-          - black
-          - ruff
-          - mypy
+        cmd: [ "black", "ruff", "mypy" ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install poetry
-        run: pipx install poetry
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v5
         with:
-          python-version: "3.11"
-          cache: "poetry"
+          persist-credentials: false
+      - id: setup-uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: "3.12"
+          version: "latest"
+          python-version: "3.12"
       - name: Install deps
-        run: poetry install
+        run: uv sync --all-extras
       - name: Run lint check
-        run: poetry run pre-commit run -a ${{ matrix.cmd }}
+        run: uv run pre-commit run -a ${{ matrix.cmd }}
   pytest:
     strategy:
       matrix:
-        py_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        py_version: [ "3.10", "3.11", "3.12", "3.13" ]
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Redis instance and Redis cluster
         run: docker compose up -d
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Set up uv and enable cache
+        id: setup-uv
+        uses: astral-sh/setup-uv@v7
         with:
+          enable-cache: true
+          cache-suffix: "${{ matrix.py_version }}"
+          version: "latest"
           python-version: "${{ matrix.py_version }}"
-      - name: Update pip
-        run: python -m pip install -U pip
-      - name: Install poetry
-        run: python -m pip install poetry
       - name: Install deps
-        run: poetry install
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-      - name: Run pytest check
-        run: poetry run pytest -vv -n auto --cov="taskiq_redis" .
-      - name: Generate report
-        run: poetry run coverage xml
+        run: uv sync --all-extras
+      - name: Run pytest
+        run: uv run pytest -vv -n auto --cov="taskiq_redis" .
+      - name: Generate coverage report
+        run: uv run coverage xml
       - name: Upload coverage reports to Codecov with GitHub Action
-        uses: codecov/codecov-action@v3
-        if: matrix.py_version == '3.9'
+        uses: codecov/codecov-action@v5
+        if: matrix.py_version == '3.10'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false

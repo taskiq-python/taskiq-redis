@@ -1,6 +1,6 @@
 import datetime
 from logging import getLogger
-from typing import Any, List, Optional
+from typing import Any
 
 from redis.asyncio import BlockingConnectionPool, Redis
 from taskiq import ScheduledTask, ScheduleSource
@@ -19,8 +19,8 @@ class ListRedisScheduleSource(ScheduleSource):
         self,
         url: str,
         prefix: str = "schedule",
-        max_connection_pool_size: Optional[int] = None,
-        serializer: Optional[TaskiqSerializer] = None,
+        max_connection_pool_size: int | None = None,
+        serializer: TaskiqSerializer | None = None,
         buffer_size: int = 50,
         skip_past_schedules: bool = False,
         **connection_kwargs: Any,
@@ -48,7 +48,7 @@ class ListRedisScheduleSource(ScheduleSource):
             serializer = PickleSerializer()
         self._serializer = serializer
         self._is_first_run = True
-        self._previous_schedule_source: Optional[ScheduleSource] = None
+        self._previous_schedule_source: ScheduleSource | None = None
         self._delete_schedules_after_migration: bool = True
         self._skip_past_schedules = skip_past_schedules
 
@@ -89,7 +89,7 @@ class ListRedisScheduleSource(ScheduleSource):
         """Get the key for a schedule data."""
         return f"{self._prefix}:data:{schedule_id}"
 
-    def _parse_time_key(self, key: str) -> Optional[datetime.datetime]:
+    def _parse_time_key(self, key: str) -> datetime.datetime | None:
         """Get time value from the timed-key."""
         try:
             dt_str = key.split(":", 2)[2]
@@ -175,7 +175,7 @@ class ListRedisScheduleSource(ScheduleSource):
         if task.time is not None:
             await self.delete_schedule(task.schedule_id)
 
-    async def get_schedules(self) -> List["ScheduledTask"]:
+    async def get_schedules(self) -> list["ScheduledTask"]:
         """
         Get all schedules.
 

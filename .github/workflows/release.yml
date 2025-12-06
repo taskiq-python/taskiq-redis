@@ -3,24 +3,25 @@ name: Release python package
 on:
   push:
     tags:
-      - "*"
+      - released
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v5
         with:
-          python-version: "3.11"
-      - name: Install deps
-        uses: knowsuchagency/poetry-install@v1
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-      - name: Set version
-        run: poetry version "${{ github.ref_name }}"
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+          python-version: "3.12"
+          version: "latest"
+      - run: uv version "${GITHUB_REF_NAME}"
+      - run: uv build
       - name: Release package
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
-        run: poetry publish --build
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: uv publish

@@ -1,6 +1,7 @@
 import uuid
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from logging import getLogger
-from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, Optional
+from typing import Any
 
 from redis.asyncio import RedisCluster, ResponseError
 from taskiq import AckableMessage
@@ -30,7 +31,7 @@ class BaseRedisClusterBroker(AsyncBroker):
         """
         super().__init__()
 
-        self.redis: "RedisCluster[bytes]" = RedisCluster.from_url(  # type: ignore
+        self.redis: RedisCluster[bytes] = RedisCluster.from_url(  # type: ignore
             url=url,
             max_connections=max_connection_pool_size,
             **connection_kwargs,
@@ -89,13 +90,13 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
         queue_name: str = "taskiq",
         max_connection_pool_size: int = 2**31,
         consumer_group_name: str = "taskiq",
-        consumer_name: Optional[str] = None,
+        consumer_name: str | None = None,
         consumer_id: str = "$",
         mkstream: bool = True,
         xread_block: int = 10000,
-        maxlen: Optional[int] = None,
+        maxlen: int | None = None,
         approximate: bool = True,
-        additional_streams: Optional[Dict[str, str]] = None,
+        additional_streams: dict[str, str] | None = None,
         **connection_kwargs: Any,
     ) -> None:
         """

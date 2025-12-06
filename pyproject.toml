@@ -1,20 +1,26 @@
-[tool.poetry]
+[project]
 name = "taskiq-redis"
 version = "0.0.0"
 description = "Redis integration for taskiq"
-authors = ["taskiq-team <taskiq@norely.com>"]
+authors = [
+    { name = "Taskiq team", email = "taskiq@no-reply.com" }
+]
+maintainers = [
+    { name = "Taskiq team", email = "taskiq@no-reply.com" }
+]
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
-homepage = "https://github.com/taskiq-python/taskiq-redis"
-repository = "https://github.com/taskiq-python/taskiq-redis"
 keywords = [
     "taskiq",
     "tasks",
@@ -23,24 +29,34 @@ keywords = [
     "redis",
     "result_backend",
 ]
+dependencies = [
+    "redis>=7.0.0,<7.1.0",  # TODO: fix issues in tests with 7.1.0
+    "taskiq>=0.12.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-taskiq = ">=0.11.12,<1"
-redis = "^7"
+[dependency-groups]
+dev = [
+    {include-group = "lint"},
+    {include-group = "test"},
+    "pre-commit>=4.5.0",
+]
+test = [
+    "fakeredis>=2.32.1",
+    "freezegun>=1.5.5",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "pytest-env>=1.2.0",
+    "pytest-xdist>=3.8.0",
+]
+lint = [
+    "black>=25.11.0",
+    "mypy>=1.19.0",
+    "ruff>=0.14.7",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8"
-mypy = "^1"
-black = "^25"
-pytest-cov = "^6"
-anyio = "^4"
-pytest-env = "^1"
-fakeredis = "^2"
-pre-commit = "^4"
-pytest-xdist = { version = "^3", extras = ["psutil"] }
-ruff = "^0"
-freezegun = "^1.5.1"
+[project.urls]
+homepage = "https://github.com/taskiq-python/taskiq-redis"
+repository = "https://github.com/taskiq-python/taskiq-redis"
 
 [tool.mypy]
 strict = true
@@ -60,8 +76,12 @@ ignore_errors = true
 strict = false
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.9.13,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "taskiq_redis"
 
 [tool.ruff]
 # List of enabled rulsets.
@@ -92,6 +112,8 @@ lint.select = [
     "ERA", # Checks for commented out code
     "PL",  # PyLint checks
     "RUF", # Specific to Ruff checks
+    "FA102", # Future annotations
+    "UP", # Pyupgrade
 ]
 lint.ignore = [
     "D105",    # Missing docstring in magic method
@@ -105,8 +127,10 @@ lint.ignore = [
     "D106",    # Missing docstring in public nested class
 ]
 exclude = [".venv/"]
-lint.mccabe = { max-complexity = 10 }
 line-length = 88
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
