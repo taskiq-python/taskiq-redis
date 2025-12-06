@@ -124,7 +124,7 @@ lint.ignore = [
     "D100",    # Missing docstring in public module
     "ANN401",  # typing.Any are disallowed in `**kwargs
     "PLR0913", # Too many arguments for function call
-    "D106", # Missing docstring in public nested class
+    "D106",    # Missing docstring in public nested class
 ]
 exclude = [".venv/"]
 line-length = 88
@@ -134,12 +134,12 @@ max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
-    "S101", # Use of assert detected
-    "S301", # Use of pickle detected
-    "D103", # Missing docstring in public function
+    "S101",   # Use of assert detected
+    "S301",   # Use of pickle detected
+    "D103",   # Missing docstring in public function
     "SLF001", # Private member accessed
-    "S311", # Standard pseudo-random generators are not suitable for security/cryptographic purposes
-    "D101", # Missing docstring in public class
+    "S311",   # Standard pseudo-random generators are not suitable for security/cryptographic purposes
+    "D101",   # Missing docstring in public class
 ]
 
 [tool.ruff.lint.pydocstyle]
