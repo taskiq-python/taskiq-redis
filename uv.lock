@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10"
 
 [[package]]
@@ -1437,7 +1437,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "redis", specifier = ">=7.0.0,<7.1.0" },
+    { name = "redis", specifier = ">=7.0.0,<8" },
     { name = "taskiq", specifier = ">=0.12.0" },
 ]
 

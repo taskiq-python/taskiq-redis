@@ -2,61 +2,61 @@
 name = "taskiq-redis"
 version = "0.0.0"
 description = "Redis integration for taskiq"
-authors = [
-    { name = "Taskiq team", email = "taskiq@no-reply.com" }
-]
-maintainers = [
-    { name = "Taskiq team", email = "taskiq@no-reply.com" }
-]
-license = "MIT"
-license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.10"
-classifiers = [
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Taskiq team", email = "taskiq@no-reply.com" }]
+maintainers = [{ name = "Taskiq team", email = "taskiq@no-reply.com" }]
 keywords = [
-    "taskiq",
-    "tasks",
-    "distributed",
-    "async",
-    "redis",
-    "result_backend",
+  "async",
+  "distributed",
+  "redis",
+  "result_backend",
+  "taskiq",
+  "tasks",
+]
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "redis>=7.0.0,<7.1.0",  # TODO: fix issues in tests with 7.1.0
-    "taskiq>=0.12.0",
-]
-
-[dependency-groups]
-dev = [
-    {include-group = "lint"},
-    {include-group = "test"},
-    "pre-commit>=4.5.0",
-]
-test = [
-    "fakeredis>=2.32.1",
-    "freezegun>=1.5.5",
-    "pytest>=9.0.1",
-    "pytest-cov>=7.0.0",
-    "pytest-env>=1.2.0",
-    "pytest-xdist>=3.8.0",
-]
-lint = [
-    "black>=25.11.0",
-    "mypy>=1.19.0",
-    "ruff>=0.14.7",
+  "redis>=7.0.0,<8",  # TODO: fix issues in tests with 7.1.0
+  "taskiq>=0.12.0",
 ]
 
 [project.urls]
 homepage = "https://github.com/taskiq-python/taskiq-redis"
 repository = "https://github.com/taskiq-python/taskiq-redis"
+
+[dependency-groups]
+dev = [
+  "pre-commit>=4.5.0",
+  { include-group = "lint" },
+  { include-group = "test" },
+]
+lint = [
+  "black>=25.11.0",
+  "mypy>=1.19.0",
+  "ruff>=0.14.7",
+]
+test = [
+  "fakeredis>=2.32.1",
+  "freezegun>=1.5.5",
+  "pytest>=9.0.1",
+  "pytest-cov>=7.0.0",
+  "pytest-env>=1.2.0",
+  "pytest-xdist>=3.8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.13,<0.10.0"]
+build-backend = "uv_build"
 
 [tool.mypy]
 strict = true
@@ -70,61 +70,59 @@ allow_untyped_decorators = true
 warn_return_any = false
 
 [[tool.mypy.overrides]]
-module = ['redis']
+module = ["redis"]
 ignore_missing_imports = true
 ignore_errors = true
 strict = false
 
-[build-system]
-requires = ["uv_build>=0.9.13,<0.10.0"]
-build-backend = "uv_build"
-
-[tool.uv.build-backend]
-module-root = ""
-module-name = "taskiq_redis"
+[tool.pytest.ini_options]
+filterwarnings = [
+  # about deprecated RedisScheduleSource usage - delete after removing RedisScheduleSource
+  "ignore:RedisScheduleSource is deprecated:DeprecationWarning",
+]
 
 [tool.ruff]
 # List of enabled rulsets.
 # See https://docs.astral.sh/ruff/rules/ for more information.
 lint.select = [
-    "E",   # Error
-    "F",   # Pyflakes
-    "W",   # Pycodestyle
-    "C90", # McCabe complexity
-    "I",   # Isort
-    "N",   # pep8-naming
-    "D",   # Pydocstyle
-    "ANN", # Pytype annotations
-    "S",   # Bandit
-    "B",   # Bugbear
-    "COM", # Commas
-    "C4",  # Comprehensions
-    "ISC", # Implicit string concat
-    "PIE", # Unnecessary code
-    "T20", # Catch prints
-    "PYI", # validate pyi files
-    "Q",   # Checks for quotes
-    "RSE", # Checks raise statements
-    "RET", # Checks return statements
-    "SLF", # Self checks
-    "SIM", # Simplificator
-    "PTH", # Pathlib checks
-    "ERA", # Checks for commented out code
-    "PL",  # PyLint checks
-    "RUF", # Specific to Ruff checks
-    "FA102", # Future annotations
-    "UP", # Pyupgrade
+  "E",  # Error
+  "F",  # Pyflakes
+  "W",  # Pycodestyle
+  "C90",  # McCabe complexity
+  "I",  # Isort
+  "N",  # pep8-naming
+  "D",  # Pydocstyle
+  "ANN",  # Pytype annotations
+  "S",  # Bandit
+  "B",  # Bugbear
+  "COM",  # Commas
+  "C4",  # Comprehensions
+  "ISC",  # Implicit string concat
+  "PIE",  # Unnecessary code
+  "T20",  # Catch prints
+  "PYI",  # validate pyi files
+  "Q",  # Checks for quotes
+  "RSE",  # Checks raise statements
+  "RET",  # Checks return statements
+  "SLF",  # Self checks
+  "SIM",  # Simplificator
+  "PTH",  # Pathlib checks
+  "ERA",  # Checks for commented out code
+  "PL",  # PyLint checks
+  "RUF",  # Specific to Ruff checks
+  "FA102",  # Future annotations
+  "UP",  # Pyupgrade
 ]
 lint.ignore = [
-    "D105",    # Missing docstring in magic method
-    "D107",    # Missing docstring in __init__
-    "D212",    # Multi-line docstring summary should start at the first line
-    "D401",    # First line should be in imperative mood
-    "D104",    # Missing docstring in public package
-    "D100",    # Missing docstring in public module
-    "ANN401",  # typing.Any are disallowed in `**kwargs
-    "PLR0913", # Too many arguments for function call
-    "D106",    # Missing docstring in public nested class
+  "D105",  # Missing docstring in magic method
+  "D107",  # Missing docstring in __init__
+  "D212",  # Multi-line docstring summary should start at the first line
+  "D401",  # First line should be in imperative mood
+  "D104",  # Missing docstring in public package
+  "D100",  # Missing docstring in public module
+  "ANN401",  # typing.Any are disallowed in `**kwargs
+  "PLR0913",  # Too many arguments for function call
+  "D106",  # Missing docstring in public nested class
 ]
 exclude = [".venv/"]
 line-length = 88
@@ -134,12 +132,12 @@ max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
-    "S101",   # Use of assert detected
-    "S301",   # Use of pickle detected
-    "D103",   # Missing docstring in public function
-    "SLF001", # Private member accessed
-    "S311",   # Standard pseudo-random generators are not suitable for security/cryptographic purposes
-    "D101",   # Missing docstring in public class
+  "S101",  # Use of assert detected
+  "S301",  # Use of pickle detected
+  "D103",  # Missing docstring in public function
+  "SLF001",  # Private member accessed
+  "S311",  # Standard pseudo-random generators are not suitable for security/cryptographic purposes
+  "D101",  # Missing docstring in public class
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -152,8 +150,6 @@ allow-magic-value-types = ["int", "str", "float"]
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["taskiq_dependencies.Depends", "taskiq.TaskiqDepends"]
 
-[tool.pytest.ini_options]
-filterwarnings = [
-    # about deprecated RedisScheduleSource usage - delete after removing RedisScheduleSource
-    'ignore:RedisScheduleSource is deprecated:DeprecationWarning',
-]
+[tool.uv.build-backend]
+module-root = ""
+module-name = "taskiq_redis"
