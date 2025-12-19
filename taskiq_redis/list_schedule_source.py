@@ -85,6 +85,9 @@ class ListRedisScheduleSource(ScheduleSource):
         """Get the key for a cron-based schedule."""
         return f"{self._prefix}:cron"
 
+    def _get_interval_key(self) -> str:
+        return f"{self._prefix}:interval"
+
     def _get_data_key(self, schedule_id: str) -> str:
         """Get the key for a schedule data."""
         return f"{self._prefix}:data:{schedule_id}"
@@ -150,6 +153,8 @@ class ListRedisScheduleSource(ScheduleSource):
                 elif schedule.time is not None:
                     time_key = self._get_time_key(schedule.time)
                     await redis.lrem(time_key, 0, schedule_id)  # type: ignore[misc]
+                elif schedule.interval:
+                    await redis.lrem(self._get_interval_key(), 0, schedule_id)  # type: ignore[misc]
 
     async def add_schedule(self, schedule: "ScheduledTask") -> None:
         """Add a schedule to the source."""
@@ -167,6 +172,11 @@ class ListRedisScheduleSource(ScheduleSource):
             elif schedule.time is not None:
                 await redis.rpush(  # type: ignore[misc]
                     self._get_time_key(schedule.time),
+                    schedule.schedule_id,
+                )
+            elif schedule.interval:
+                await redis.rpush(  # type: ignore[misc]
+                    self._get_interval_key(),
                     schedule.schedule_id,
                 )
 
@@ -199,6 +209,10 @@ class ListRedisScheduleSource(ScheduleSource):
             logger.debug("Got %d cron schedules", len(crons))
             if crons:
                 buffer.extend(crons)
+            intervals = await redis.lrange(self._get_interval_key(), 0, -1)  # type: ignore[misc]
+            logger.debug("Got %d interval schedules", len(intervals))
+            if intervals:
+                buffer.extend(intervals)
             timed.extend(await redis.lrange(self._get_time_key(current_time), 0, -1))  # type: ignore[misc]
             logger.debug("Got %d timed schedules", len(timed))
             if timed:
