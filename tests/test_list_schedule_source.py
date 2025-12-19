@@ -29,6 +29,24 @@ async def test_schedule_cron(redis_url: str) -> None:
 
 @pytest.mark.anyio
 @freeze_time("2025-01-01 00:00:00")
+async def test_schedule_interval(redis_url: str) -> None:
+    """Test adding a cron schedule."""
+    prefix = uuid.uuid4().hex
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
+    schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        interval=datetime.timedelta(seconds=5),
+    )
+    await source.add_schedule(schedule)
+    scehdules = await source.get_schedules()
+    assert scehdules == [schedule]
+
+
+@pytest.mark.anyio
+@freeze_time("2025-01-01 00:00:00")
 async def test_schedule_from_past(redis_url: str) -> None:
     """Test adding a cron schedule."""
     prefix = uuid.uuid4().hex
@@ -56,7 +74,7 @@ async def test_schedule_from_past(redis_url: str) -> None:
 
 @pytest.mark.anyio
 @freeze_time("2025-01-01 00:00:00")
-async def test_schedule_removal(redis_url: str) -> None:
+async def test_removal_time(redis_url: str) -> None:
     """Test adding a cron schedule."""
     prefix = uuid.uuid4().hex
     source = ListRedisScheduleSource(redis_url, prefix=prefix)
@@ -81,8 +99,8 @@ async def test_schedule_removal(redis_url: str) -> None:
 
 @pytest.mark.anyio
 @freeze_time("2025-01-01 00:00:00")
-async def test_deletion(redis_url: str) -> None:
-    """Test adding a cron schedule."""
+async def test_removal_cron(redis_url: str) -> None:
+    """Test removing cron schedules."""
     prefix = uuid.uuid4().hex
     source = ListRedisScheduleSource(redis_url, prefix=prefix)
     schedule = ScheduledTask(
@@ -90,7 +108,30 @@ async def test_deletion(redis_url: str) -> None:
         labels={},
         args=[],
         kwargs={},
-        time=datetime.datetime.now(datetime.timezone.utc),
+        cron="* * * * *",
+    )
+    await source.add_schedule(schedule)
+    # When running for the first time, the scheduler will get all the
+    # schedules that are in the past.
+    scehdules = await source.get_schedules()
+    assert scehdules == [schedule]
+    await source.delete_schedule(schedule.schedule_id)
+    scehdules = await source.get_schedules()
+    assert scehdules == []
+
+
+@pytest.mark.anyio
+@freeze_time("2025-01-01 00:00:00")
+async def test_removal_interval(redis_url: str) -> None:
+    """Test removing cron schedules."""
+    prefix = uuid.uuid4().hex
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
+    schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        interval=datetime.timedelta(seconds=30),
     )
     await source.add_schedule(schedule)
     # When running for the first time, the scheduler will get all the
