@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Set up Redis instance and Redis cluster
-        run: docker compose up -d
+        run: docker compose up -d --wait
       - name: Set up uv and enable cache
         id: setup-uv
         uses: astral-sh/setup-uv@v7
