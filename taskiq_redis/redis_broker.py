@@ -161,6 +161,7 @@ class RedisStreamBroker(BaseRedisBroker):
         approximate: bool = True,
         idle_timeout: int = 600000,  # 10 minutes
         unacknowledged_batch_size: int = 100,
+        unacknowledged_lock_timeout: float | None = None,
         xread_count: int | None = 100,
         additional_streams: dict[str, str | int] | None = None,
         **connection_kwargs: Any,
@@ -188,8 +189,10 @@ class RedisStreamBroker(BaseRedisBroker):
         :param xread_count: number of messages to fetch from the stream at once.
         :param additional_streams: additional streams to read from.
             Each key is a stream name, value is a consumer id.
-        :param redeliver_timeout: time in ms to wait before redelivering a message.
         :param unacknowledged_batch_size: number of unacknowledged messages to fetch.
+        :param unacknowledged_lock_timeout: time in seconds before auto-releasing
+            the lock. Useful when the worker crashes or gets killed.
+            If not set, the lock can remain locked indefinitely.
         """
         super().__init__(
             url,
@@ -209,6 +212,7 @@ class RedisStreamBroker(BaseRedisBroker):
         self.additional_streams = additional_streams or {}
         self.idle_timeout = idle_timeout
         self.unacknowledged_batch_size = unacknowledged_batch_size
+        self.unacknowledged_lock_timeout = unacknowledged_lock_timeout
         self.count = xread_count
 
     async def _declare_consumer_group(self) -> None:
@@ -290,6 +294,7 @@ class RedisStreamBroker(BaseRedisBroker):
                 for stream in [self.queue_name, *self.additional_streams.keys()]:
                     lock = redis_conn.lock(
                         f"autoclaim:{self.consumer_group_name}:{stream}",
+                        timeout=self.unacknowledged_lock_timeout,
                     )
                     if await lock.locked():
                         continue

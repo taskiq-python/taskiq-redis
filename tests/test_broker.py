@@ -432,3 +432,38 @@ async def test_maxlen_in_sentinel_stream_broker(
     async with broker._acquire_master_conn() as redis_conn:
         assert await redis_conn.xlen(broker.queue_name) == maxlen
     await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_unacknowledged_lock_timeout_in_stream_broker(
+    redis_url: str,
+    valid_broker_message: BrokerMessage,
+) -> None:
+    unacknowledged_lock_timeout = 1
+    queue_name = uuid.uuid4().hex
+    consumer_group_name = uuid.uuid4().hex
+
+    broker = RedisStreamBroker(
+        url=redis_url,
+        approximate=False,
+        queue_name=queue_name,
+        consumer_group_name=consumer_group_name,
+        unacknowledged_lock_timeout=unacknowledged_lock_timeout,
+    )
+
+    await broker.startup()
+    await broker.kick(valid_broker_message)
+
+    message = await get_message(broker)
+    assert isinstance(message, AckableMessage)
+    assert message.data == valid_broker_message.message
+
+    async with Redis(connection_pool=broker.connection_pool) as redis:
+        lock_key = f"autoclaim:{consumer_group_name}:{queue_name}"
+        await redis.exists(lock_key)
+        await asyncio.sleep(unacknowledged_lock_timeout + 0.5)
+
+        lock_exists_after_timeout = await redis.exists(lock_key)
+        assert lock_exists_after_timeout == 0, "Lock should be released after timeout"
+
+    await broker.shutdown()
