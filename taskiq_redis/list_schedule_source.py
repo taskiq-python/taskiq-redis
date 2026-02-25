@@ -174,7 +174,10 @@ class ListRedisScheduleSource(ScheduleSource):
             if await redis.llen(key) == 0:
                 await redis.zrem(self._get_time_index_key(), key)
 
-    async def _get_previous_time_schedules(self) -> list[bytes]:
+    async def _get_previous_time_schedules(
+        self,
+        current_time: datetime.datetime,
+    ) -> list[bytes]:
         """
         Function that gets all timed schedules that are in the past.
 
@@ -187,11 +190,15 @@ class ListRedisScheduleSource(ScheduleSource):
 
         This function is called only during the first run to minimize
         the number of requests to the Redis server.
+
+        :param current_time: The reference time captured by the caller,
+            used to derive the cutoff so that the "previous" and "current"
+            windows never overlap.
         """
         logger.info("Getting previous time schedules")
-        minute_before = datetime.datetime.now(
-            datetime.timezone.utc,
-        ).replace(second=0, microsecond=0) - datetime.timedelta(
+        minute_before = current_time.replace(
+            second=0, microsecond=0,
+        ) - datetime.timedelta(
             minutes=1,
         )
         schedules = []
@@ -284,7 +291,7 @@ class ListRedisScheduleSource(ScheduleSource):
         timed: list[bytes] = []
         # Only during first run, we need to get previous time schedules
         if not self._skip_past_schedules and self._is_first_run:
-            timed = await self._get_previous_time_schedules()
+            timed = await self._get_previous_time_schedules(current_time)
             self._is_first_run = False
         async with Redis(connection_pool=self._connection_pool) as redis:
             buffer = []
