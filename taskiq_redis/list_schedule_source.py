@@ -1,4 +1,5 @@
 import datetime
+import time as _time
 from logging import getLogger
 from typing import Any
 
@@ -58,6 +59,7 @@ class ListRedisScheduleSource(ScheduleSource):
         self._delete_schedules_after_migration: bool = True
         self._skip_past_schedules = skip_past_schedules
         self._populate_time_index = populate_time_index
+        self._last_cleanup_time: float = 0
 
     async def startup(self) -> None:
         """
@@ -136,6 +138,42 @@ class ListRedisScheduleSource(ScheduleSource):
             logger.debug("Failed to parse time key %s", key)
             return None
 
+    async def _maybe_cleanup_time_index(self, redis: Redis) -> None:  # type: ignore[type-arg]
+        """
+        Run time index cleanup at most once per minute.
+
+        Called from delete_schedule after removing a time-based schedule,
+        since that's the path where time key lists become empty.
+        """
+        now = _time.monotonic()
+        if now - self._last_cleanup_time < 60:
+            return
+        self._last_cleanup_time = now
+        await self._cleanup_time_index(redis)
+
+    async def _cleanup_time_index(self, redis: Redis) -> None:  # type: ignore[type-arg]
+        """
+        Remove stale entries from the time index sorted set.
+
+        Only removes entries that are older than 1 hour AND whose
+        corresponding time key list is empty (or no longer exists).
+        This avoids a race condition where an eager cleanup in
+        delete_schedule could remove an index entry right as
+        add_schedule is creating a new schedule at the same minute.
+        """
+        one_hour_ago = (
+            datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(hours=1)
+        ).timestamp()
+        stale_keys: list[bytes] = await redis.zrangebyscore(
+            self._get_time_index_key(),
+            "-inf",
+            one_hour_ago,
+        )
+        for key in stale_keys:
+            if await redis.llen(key) == 0:
+                await redis.zrem(self._get_time_index_key(), key)
+
     async def _get_previous_time_schedules(self) -> list[bytes]:
         """
         Function that gets all timed schedules that are in the past.
@@ -185,14 +223,7 @@ class ListRedisScheduleSource(ScheduleSource):
                 elif schedule.time is not None:
                     time_key = self._get_time_key(schedule.time)
                     await redis.lrem(time_key, 0, schedule_id)  # type: ignore[misc]
-                    # If the time key list is now empty, clean up both
-                    # the list key and its entry in the time index.
-                    if await redis.llen(time_key) == 0:
-                        await redis.delete(time_key)
-                        await redis.zrem(
-                            self._get_time_index_key(),
-                            time_key,
-                        )
+                    await self._maybe_cleanup_time_index(redis)
                 elif schedule.interval:
                     await redis.lrem(self._get_interval_key(), 0, schedule_id)  # type: ignore[misc]
 
