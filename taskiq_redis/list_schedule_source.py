@@ -54,7 +54,6 @@ class ListRedisScheduleSource(ScheduleSource):
         if serializer is None:
             serializer = PickleSerializer()
         self._serializer = serializer
-        self._is_first_run = True
         self._previous_schedule_source: ScheduleSource | None = None
         self._delete_schedules_after_migration: bool = True
         self._skip_past_schedules = skip_past_schedules
@@ -188,8 +187,9 @@ class ListRedisScheduleSource(ScheduleSource):
         Uses the time index sorted set to look up past time keys
         instead of scanning all Redis keys.
 
-        This function is called only during the first run to minimize
-        the number of requests to the Redis server.
+        Called on every get_schedules invocation so that schedules
+        added in a past minute (after the previous get_schedules call
+        but before the minute rolled over) are never missed.
 
         :param current_time: The reference time captured by the caller,
             used to derive the cutoff so that the "previous" and "current"
@@ -280,19 +280,19 @@ class ListRedisScheduleSource(ScheduleSource):
         Get all schedules.
 
         This function gets all the schedules from the schedule source.
-        What it does is get all the cron schedules and time schedules
-        for the current time and return them.
+        What it does is get all the cron schedules, interval schedules,
+        past time schedules, and current-minute time schedules and
+        return them.
 
-        If it's the first run, it also gets all the time schedules
-        that are in the past and haven't been sent yet.
+        Past time schedules are fetched on every call so that
+        schedules added after the previous call but before the
+        minute rolled over are never missed.
         """
         schedules = []
         current_time = datetime.datetime.now(datetime.timezone.utc)
         timed: list[bytes] = []
-        # Only during first run, we need to get previous time schedules
-        if not self._skip_past_schedules and self._is_first_run:
+        if not self._skip_past_schedules:
             timed = await self._get_previous_time_schedules(current_time)
-            self._is_first_run = False
         async with Redis(connection_pool=self._connection_pool) as redis:
             buffer = []
             crons = await redis.lrange(self._get_cron_key(), 0, -1)  # type: ignore[misc]
