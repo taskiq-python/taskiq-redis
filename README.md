@@ -154,9 +154,26 @@ This is very ineficent and should not be used for high-volume schedules. Because
 This source holds values in lists.
 
 * For cron tasks it uses key `{prefix}:cron`.
+* For interval tasks it uses key `{prefix}:interval`.
 * For timed schedules it uses key `{prefix}:time:{time}` where `{time}` is actually time where schedules should run.
+* A sorted set at `{prefix}:time_index` tracks all time keys with their unix timestamps as scores, so that past time schedules can be discovered via `ZRANGEBYSCORE` instead of scanning all Redis keys. Stale entries (older than 5 minutes with empty time key lists) are cleaned up automatically.
 
-The main advantage of this approach is that we only fetch tasks we need to run at a given time and do not perform any excesive calls to redis.
+The main advantage of this approach is that we only fetch tasks we need to run at a given time and do not perform any excessive calls to redis.
+
+#### `populate_time_index`
+
+If you are upgrading from an older version that did not maintain the `{prefix}:time_index` sorted set, existing time keys will not be present in the index. Set `populate_time_index=True` once on startup to backfill the index via a one-time `SCAN`, then set it back to `False` for subsequent runs:
+
+```python
+# First run after upgrading — backfills the time index
+source = ListRedisScheduleSource(
+    "redis://localhost/1",
+    populate_time_index=True,
+)
+
+# All subsequent runs — no SCAN, uses the time index
+source = ListRedisScheduleSource("redis://localhost/1")
+```
 
 
 ### Migration from one source to another
