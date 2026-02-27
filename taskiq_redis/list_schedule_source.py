@@ -154,20 +154,20 @@ class ListRedisScheduleSource(ScheduleSource):
         """
         Remove stale entries from the time index sorted set.
 
-        Only removes entries that are older than 1 hour AND whose
+        Only removes entries that are older than 5 minutes AND whose
         corresponding time key list is empty (or no longer exists).
         This avoids a race condition where an eager cleanup in
         delete_schedule could remove an index entry right as
         add_schedule is creating a new schedule at the same minute.
         """
-        one_hour_ago = (
+        five_minutes_ago = (
             datetime.datetime.now(datetime.timezone.utc)
-            - datetime.timedelta(hours=1)
+            - datetime.timedelta(minutes=5)
         ).timestamp()
         stale_keys: list[bytes] = await redis.zrangebyscore(
             self._get_time_index_key(),
             "-inf",
-            one_hour_ago,
+            five_minutes_ago,
         )
         for key in stale_keys:
             if await redis.llen(key) == 0:

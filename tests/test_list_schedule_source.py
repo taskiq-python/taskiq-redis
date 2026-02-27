@@ -237,12 +237,13 @@ async def test_time_index_not_eagerly_cleaned_on_delete(redis_url: str) -> None:
 @pytest.mark.anyio
 async def test_cleanup_removes_old_empty_entries(redis_url: str) -> None:
     """Test that _cleanup_time_index removes index entries that are
-    older than 1 hour and whose time key lists are empty."""
+    older than 5 minutes and whose time key lists are empty."""
     prefix = uuid.uuid4().hex
-    with freeze_time("2025-01-01 00:00:00"):
+    with freeze_time("2025-01-01 00:10:00"):
         source = ListRedisScheduleSource(redis_url, prefix=prefix)
+        # 10 minutes before "now" — well past the 5-minute threshold.
         old_time = datetime.datetime(
-            2024, 12, 31, 22, 0, tzinfo=datetime.timezone.utc,
+            2025, 1, 1, 0, 0, tzinfo=datetime.timezone.utc,
         )
         schedule = ScheduledTask(
             task_name="test_task",
@@ -263,8 +264,8 @@ async def test_cleanup_removes_old_empty_entries(redis_url: str) -> None:
     async with Redis(connection_pool=source._connection_pool) as redis:
         assert await redis.zcard(source._get_time_index_key()) == 1
 
-    # Run cleanup directly — entry is > 1 hour old and empty.
-    with freeze_time("2025-01-01 00:00:00"):
+    # Run cleanup directly — entry is > 5 minutes old and empty.
+    with freeze_time("2025-01-01 00:10:00"):
         async with Redis(connection_pool=source._connection_pool) as redis:
             await source._cleanup_time_index(redis)
 
@@ -276,12 +277,12 @@ async def test_cleanup_removes_old_empty_entries(redis_url: str) -> None:
 @pytest.mark.anyio
 async def test_cleanup_keeps_non_empty_entries(redis_url: str) -> None:
     """Test that _cleanup_time_index does NOT remove index entries whose
-    time key lists still have schedules, even if older than 1 hour."""
+    time key lists still have schedules, even if older than 5 minutes."""
     prefix = uuid.uuid4().hex
-    with freeze_time("2025-01-01 00:00:00"):
+    with freeze_time("2025-01-01 00:10:00"):
         source = ListRedisScheduleSource(redis_url, prefix=prefix)
         old_time = datetime.datetime(
-            2024, 12, 31, 22, 0, tzinfo=datetime.timezone.utc,
+            2025, 1, 1, 0, 0, tzinfo=datetime.timezone.utc,
         )
         schedule = ScheduledTask(
             task_name="test_task",
@@ -292,8 +293,8 @@ async def test_cleanup_keeps_non_empty_entries(redis_url: str) -> None:
         )
         await source.add_schedule(schedule)
 
-    # Run cleanup — entry is > 1 hour old but list is NOT empty.
-    with freeze_time("2025-01-01 00:00:00"):
+    # Run cleanup — entry is > 5 minutes old but list is NOT empty.
+    with freeze_time("2025-01-01 00:10:00"):
         async with Redis(connection_pool=source._connection_pool) as redis:
             await source._cleanup_time_index(redis)
 
@@ -305,13 +306,13 @@ async def test_cleanup_keeps_non_empty_entries(redis_url: str) -> None:
 @pytest.mark.anyio
 async def test_cleanup_keeps_recent_empty_entries(redis_url: str) -> None:
     """Test that _cleanup_time_index does NOT remove index entries that
-    are less than 1 hour old, even if their time key lists are empty."""
+    are less than 5 minutes old, even if their time key lists are empty."""
     prefix = uuid.uuid4().hex
-    with freeze_time("2025-01-01 00:00:00"):
+    with freeze_time("2025-01-01 00:04:00"):
         source = ListRedisScheduleSource(redis_url, prefix=prefix)
-        # 30 minutes ago — within the 1-hour safety window.
+        # 2 minutes ago — within the 5-minute safety window.
         recent_time = datetime.datetime(
-            2024, 12, 31, 23, 30, tzinfo=datetime.timezone.utc,
+            2025, 1, 1, 0, 2, tzinfo=datetime.timezone.utc,
         )
         schedule = ScheduledTask(
             task_name="test_task",
@@ -323,8 +324,8 @@ async def test_cleanup_keeps_recent_empty_entries(redis_url: str) -> None:
         await source.add_schedule(schedule)
         await source.delete_schedule(schedule.schedule_id)
 
-    # Run cleanup — entry is empty but only 30 min old.
-    with freeze_time("2025-01-01 00:00:00"):
+    # Run cleanup — entry is empty but only 2 minutes old.
+    with freeze_time("2025-01-01 00:04:00"):
         async with Redis(connection_pool=source._connection_pool) as redis:
             await source._cleanup_time_index(redis)
 
@@ -403,10 +404,10 @@ async def test_populate_time_index_from_existing_keys(redis_url: str) -> None:
 async def test_post_send_triggers_cleanup(redis_url: str) -> None:
     """Test the full lifecycle: add schedule, get it, post_send it,
     then verify cleanup (triggered from delete_schedule) removes
-    the stale index entry when it's > 1 hour old."""
+    the stale index entry when it's > 5 minutes old."""
     prefix = uuid.uuid4().hex
 
-    with freeze_time("2025-01-01 02:00:00"):
+    with freeze_time("2025-01-01 00:10:00"):
         source = ListRedisScheduleSource(redis_url, prefix=prefix)
         schedule = ScheduledTask(
             task_name="test_task",
@@ -414,7 +415,7 @@ async def test_post_send_triggers_cleanup(redis_url: str) -> None:
             args=[],
             kwargs={},
             time=datetime.datetime(
-                2025, 1, 1, 0, 30, tzinfo=datetime.timezone.utc,
+                2025, 1, 1, 0, 0, tzinfo=datetime.timezone.utc,
             ),
         )
         await source.add_schedule(schedule)
@@ -424,7 +425,7 @@ async def test_post_send_triggers_cleanup(redis_url: str) -> None:
         assert schedules == [schedule]
 
         # post_send -> delete_schedule -> _maybe_cleanup_time_index.
-        # The entry is > 1 hour old and the list becomes empty,
+        # The entry is > 5 minutes old and the list becomes empty,
         # so cleanup should remove it.
         for s in schedules:
             await source.post_send(s)
@@ -433,7 +434,7 @@ async def test_post_send_triggers_cleanup(redis_url: str) -> None:
             assert await redis.zcard(source._get_time_index_key()) == 0
 
     # Second run should return nothing.
-    with freeze_time("2025-01-01 02:01:00"):
+    with freeze_time("2025-01-01 00:11:00"):
         schedules = await source.get_schedules()
         assert schedules == []
 
@@ -443,10 +444,10 @@ async def test_cleanup_rate_limited(redis_url: str) -> None:
     """Test that _maybe_cleanup_time_index only runs once per minute."""
     prefix = uuid.uuid4().hex
 
-    with freeze_time("2025-01-01 02:00:00"):
+    with freeze_time("2025-01-01 00:10:00"):
         source = ListRedisScheduleSource(redis_url, prefix=prefix)
         old_time = datetime.datetime(
-            2025, 1, 1, 0, 30, tzinfo=datetime.timezone.utc,
+            2025, 1, 1, 0, 0, tzinfo=datetime.timezone.utc,
         )
         sched1 = ScheduledTask(
             task_name="task1",
