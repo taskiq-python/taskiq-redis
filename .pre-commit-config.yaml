@@ -36,6 +36,7 @@ repos:
 
       - id: mypy
         name: Validate types with MyPy
-        entry: uv run mypy
+        entry: uv run mypy --show-traceback .
         language: system
+        pass_filenames: false
         types: [ python ]

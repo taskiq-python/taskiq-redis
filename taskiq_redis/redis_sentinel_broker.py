@@ -105,7 +105,7 @@ class ListQueueSentinelBroker(BaseSentinelBroker):
         """
         queue_name = message.labels.get("queue_name") or self.queue_name
         async with self._acquire_master_conn() as redis_conn:
-            await redis_conn.lpush(queue_name, message.message)  # type: ignore
+            await redis_conn.lpush(queue_name, message.message)
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -119,9 +119,10 @@ class ListQueueSentinelBroker(BaseSentinelBroker):
         redis_brpop_data_position = 1
         async with self._acquire_master_conn() as redis_conn:
             while True:
-                yield (await redis_conn.brpop(self.queue_name))[  # type: ignore
-                    redis_brpop_data_position
-                ]
+                brpop_result = await redis_conn.brpop(self.queue_name)
+                if brpop_result is None:
+                    continue
+                yield brpop_result[redis_brpop_data_position]  # type: ignore[misc]
 
 
 class RedisStreamSentinelBroker(BaseSentinelBroker):
@@ -252,10 +253,12 @@ class RedisStreamSentinelBroker(BaseSentinelBroker):
                     block=self.block,
                     noack=False,
                 )
-                for stream, msg_list in fetched:
-                    for msg_id, msg in msg_list:
+                if not fetched:
+                    continue
+                for stream, msg_list in fetched:  # type: ignore[str-unpack]
+                    for msg_id, msg in msg_list:  # type: ignore[str-unpack,union-attr]
                         logger.debug("Received message: %s", msg)
                         yield AckableMessage(
-                            data=msg[b"data"],
-                            ack=self._ack_generator(id=msg_id, queue_name=stream),
+                            data=msg[b"data"],  # type: ignore[arg-type,index]
+                            ack=self._ack_generator(id=msg_id, queue_name=stream),  # type: ignore[arg-type]
                         )
