@@ -156,7 +156,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
 
         taskiq_result = model_validate(
             TaskiqResult[_ReturnType],
-            self.serializer.loadb(result_value),
+            self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
         if not with_logs:
@@ -208,7 +208,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
 
         return model_validate(
             TaskProgress[_ReturnType],
-            self.serializer.loadb(result_value),
+            self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
 
@@ -333,7 +333,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
 
         taskiq_result: TaskiqResult[_ReturnType] = model_validate(
             TaskiqResult[_ReturnType],
-            self.serializer.loadb(result_value),
+            self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
         if not with_logs:
@@ -384,7 +384,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
 
         return model_validate(
             TaskProgress[_ReturnType],
-            self.serializer.loadb(result_value),
+            self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
 
@@ -519,7 +519,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
 
         taskiq_result = model_validate(
             TaskiqResult[_ReturnType],
-            self.serializer.loadb(result_value),
+            self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
         if not with_logs:
@@ -571,7 +571,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
 
         return model_validate(
             TaskProgress[_ReturnType],
-            self.serializer.loadb(result_value),
+            self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
     async def shutdown(self) -> None:

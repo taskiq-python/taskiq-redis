@@ -57,7 +57,7 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
         :param message: message to append.
         """
         queue_name = message.labels.get("queue_name") or self.queue_name
-        await self.redis.lpush(queue_name, message.message)  # type: ignore
+        await self.redis.lpush(queue_name, message.message)
 
     async def listen(self) -> AsyncGenerator[bytes, None]:
         """
@@ -70,8 +70,10 @@ class ListQueueClusterBroker(BaseRedisClusterBroker):
         """
         redis_brpop_data_position = 1
         while True:
-            value = await self.redis.brpop([self.queue_name])  # type: ignore
-            yield value[redis_brpop_data_position]
+            value = await self.redis.brpop([self.queue_name])
+            if value is None:
+                continue
+            yield value[redis_brpop_data_position]  # type: ignore[misc]
 
 
 class RedisStreamClusterBroker(BaseRedisClusterBroker):
@@ -195,10 +197,12 @@ class RedisStreamClusterBroker(BaseRedisClusterBroker):
                 block=self.block,
                 noack=False,
             )
-            for stream, msg_list in fetched:
-                for msg_id, msg in msg_list:
+            if not fetched:
+                continue
+            for stream, msg_list in fetched:  # type: ignore[str-unpack]
+                for msg_id, msg in msg_list:  # type: ignore[str-unpack,union-attr]
                     logger.debug("Received message: %s", msg)
                     yield AckableMessage(
-                        data=msg[b"data"],
-                        ack=self._ack_generator(id=msg_id, queue_name=stream),
+                        data=msg[b"data"],  # type: ignore[arg-type,index]
+                        ack=self._ack_generator(id=msg_id, queue_name=stream),  # type: ignore[arg-type]
                     )

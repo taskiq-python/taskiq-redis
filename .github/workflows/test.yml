@@ -4,9 +4,6 @@ on:
   pull_request:
     paths-ignore:
       - '*.md'
-  push:
-    paths-ignore:
-      - '*.md'
 
 permissions:
   actions: read
@@ -26,10 +23,8 @@ jobs:
       - id: setup-uv
         uses: astral-sh/setup-uv@v7
         with:
-          enable-cache: true
-          cache-suffix: "3.12"
           version: "latest"
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install deps
         run: uv sync --all-extras
       - name: Run lint check

@@ -103,7 +103,7 @@ class RedisScheduleSource(ScheduleSource):
             if buffer:
                 schedules.extend(await redis.mget(buffer))
         return [
-            model_validate(ScheduledTask, self.serializer.loadb(schedule))
+            model_validate(ScheduledTask, self.serializer.loadb(schedule))  # type: ignore[arg-type]
             for schedule in schedules
             if schedule
         ]
@@ -179,7 +179,7 @@ class RedisClusterScheduleSource(ScheduleSource):
             raw_schedule = await self.redis.get(key)
             parsed_schedule = model_validate(
                 ScheduledTask,
-                self.serializer.loadb(raw_schedule),
+                self.serializer.loadb(raw_schedule),  # type: ignore[arg-type]
             )
             schedules.append(parsed_schedule)
         return schedules
@@ -277,7 +277,7 @@ class RedisSentinelScheduleSource(ScheduleSource):
             if buffer:
                 schedules.extend(await redis.mget(buffer))
         return [
-            model_validate(ScheduledTask, self.serializer.loadb(schedule))
+            model_validate(ScheduledTask, self.serializer.loadb(schedule))  # type: ignore[arg-type]
             for schedule in schedules
             if schedule
         ]
