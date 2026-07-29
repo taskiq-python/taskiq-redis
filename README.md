@@ -98,6 +98,23 @@ Stream brokers use redis [stream type](https://redis.io/docs/latest/develop/data
 > This broker **supports** acknowledgements and therefore is fine to use in cases when data durability is
 > required.
 
+`RedisStreamBroker` is the recommended stream broker for single-node redis. It uses a consumer group so every message is delivered to exactly one worker, and pending entries are tracked by redis until they are acknowledged.
+
+Recovery of messages orphaned by a crashed worker is driven by `XCLAIM`:
+
+* Messages with a `timeout` label are reclaimed once they have been pending for longer than the task's own timeout plus `reclaim_timeout_grace`. A long-running task is never stolen while it is still within its declared timeout.
+* Messages without a `timeout` label fall back to `idle_timeout` (10 minutes by default).
+* Reclaim sweeps run at most every `reclaim_interval` (30 seconds by default) to avoid hammering redis on every listen loop. Set it to `0` to scan on every iteration.
+* A worker that shares its `consumer_name` with a previous, dead worker can still reclaim that worker's pending messages; only messages actually held by the current listener instance are protected from re-delivery.
+
+To avoid one worker hoarding the backlog, the listener does not fetch new messages while it already has `xread_count` delivered but unacknowledged messages. Set `xread_count=None` to disable this limit.
+
+When a listener is closed with messages already fetched from redis but not yet yielded to taskiq, those buffered entries are claimed to an internal `abandoned` consumer and stamped as very idle. The next reclaim sweep can recover them immediately instead of waiting for `idle_timeout`.
+
+If the consumer group is removed out of band, the broker recreates it on the next `XREADGROUP` so an in-use queue heals instead of spinning on errors.
+
+The legacy `unacknowledged_lock_timeout` parameter is deprecated and ignored; reclaim correctness now relies on the `XCLAIM` min-idle-time check instead of a broker-side redis lock.
+
 ## RedisAsyncResultBackend configuration
 
 RedisAsyncResultBackend parameters:
