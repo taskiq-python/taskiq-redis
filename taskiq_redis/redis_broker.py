@@ -1,6 +1,7 @@
 import asyncio
 import time
 import uuid
+import warnings
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable
 from contextlib import suppress
 from logging import getLogger
@@ -197,11 +198,11 @@ class RedisStreamBroker(BaseRedisBroker):
         :param approximate: decides wether to trim the stream immediately (False) or
             later on (True)
         :param xread_count: number of messages to fetch from the stream at once.
-            The broker won't make another XREADGROUP call while this listener
-            already has this many delivered but unacknowledged messages. Set to
-            None to disable this limit.
+            For a single-stream broker, it also caps this listener's delivered
+            but unacknowledged messages. Set to None to disable this limit.
         :param additional_streams: additional streams to read from.
-            Each key is a stream name, value is a consumer id.
+            Each key is a stream name, value is a consumer id. Deprecated:
+            use one broker and worker process per stream instead.
         :param unacknowledged_batch_size: number of unacknowledged messages to fetch.
         :param unacknowledged_lock_timeout: deprecated and ignored. Redis' XCLAIM
             min-idle-time check is used instead of a broker-side lock.
@@ -227,6 +228,14 @@ class RedisStreamBroker(BaseRedisBroker):
         self.maxlen = maxlen
         self.approximate = approximate
         self.additional_streams = additional_streams or {}
+        if self.additional_streams:
+            warnings.warn(
+                "additional_streams is deprecated and will be removed in a "
+                "future major release. Use one RedisStreamBroker and worker "
+                "process per stream instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.idle_timeout = idle_timeout
         self.unacknowledged_batch_size = unacknowledged_batch_size
         self.unacknowledged_lock_timeout = unacknowledged_lock_timeout

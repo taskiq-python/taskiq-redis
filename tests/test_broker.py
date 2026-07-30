@@ -636,6 +636,18 @@ async def test_stream_broker_xread_count_limits_unacked_messages(
     await broker.shutdown()
 
 
+def test_stream_broker_additional_streams_is_deprecated() -> None:
+    """Additional streams warn users to migrate to one broker per stream."""
+    with pytest.warns(
+        DeprecationWarning,
+        match="additional_streams is deprecated",
+    ):
+        RedisStreamBroker(
+            "redis://localhost:7000",
+            additional_streams={"secondary": ">"},
+        )
+
+
 @pytest.mark.anyio
 async def test_stream_broker_abandons_buffered_messages_on_close(
     redis_url: str,

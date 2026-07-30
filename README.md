@@ -107,7 +107,9 @@ Recovery of messages orphaned by a crashed worker is driven by `XCLAIM`:
 * Reclaim sweeps run at most every `reclaim_interval` (30 seconds by default) to avoid hammering redis on every listen loop. Set it to `0` to scan on every iteration.
 * A worker that shares its `consumer_name` with a previous, dead worker can still reclaim that worker's pending messages; only messages actually held by the current listener instance are protected from re-delivery.
 
-To avoid one worker hoarding the backlog, the listener does not fetch new messages while it already has `xread_count` delivered but unacknowledged messages. Set `xread_count=None` to disable this limit.
+For a single-stream broker, `xread_count` also prevents one worker from hoarding the backlog: the listener does not fetch new messages while it already has that many delivered but unacknowledged messages. Set `xread_count=None` to disable this limit.
+
+`additional_streams` is deprecated and will be removed in a future major release. Configure one `RedisStreamBroker` per stream and run a worker process for each broker instead. This gives each stream an independent consumer, reclaim policy, and prefetch limit. It also avoids Redis `XREADGROUP COUNT` applying separately to every stream in a multi-stream read.
 
 When a listener is closed with messages already fetched from redis but not yet yielded to taskiq, those buffered entries are claimed to an internal `abandoned` consumer and stamped as very idle. The next reclaim sweep can recover them immediately instead of waiting for `idle_timeout`.
 
