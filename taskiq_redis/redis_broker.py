@@ -13,7 +13,13 @@ from typing import (
     cast,
 )
 
-from redis.asyncio import BlockingConnectionPool, Connection, Redis, ResponseError
+from redis.asyncio import (
+    BlockingConnectionPool,
+    Connection,
+    Redis,
+    RedisError,
+    ResponseError,
+)
 from taskiq import AckableMessage
 from taskiq.abc.broker import AsyncBroker
 from taskiq.abc.result_backend import AsyncResultBackend
@@ -327,16 +333,15 @@ class RedisStreamBroker(BaseRedisBroker):
         async def _ack() -> None:
             nonlocal acked
             async with Redis(connection_pool=self.connection_pool) as redis_conn:
-                try:
-                    await redis_conn.xack(
-                        queue_name,
-                        self.consumer_group_name,
-                        id,
-                    )
-                finally:
-                    if not acked and on_ack is not None:
-                        acked = True
-                        on_ack()
+                await redis_conn.xack(
+                    queue_name,
+                    self.consumer_group_name,
+                    id,
+                )
+            if not acked:
+                acked = True
+                if on_ack is not None:
+                    on_ack()
 
         return _ack
 
@@ -380,7 +385,8 @@ class RedisStreamBroker(BaseRedisBroker):
         stream: str,
         count: int,
         protected_message_ids: set[tuple[str, str]],
-    ) -> list[tuple[str, dict[bytes, bytes]]]:
+        pending_start: str,
+    ) -> tuple[list[tuple[str, dict[bytes, bytes]]], str]:
         """Claim pending messages that exceeded their reclaim deadline.
 
         protected_message_ids contains entries delivered by this listener
@@ -388,37 +394,30 @@ class RedisStreamBroker(BaseRedisBroker):
         in-flight work, while still allowing a restarted worker with the same
         Redis consumer name to recover messages left by its predecessor.
         """
-        try:
-            pending = await redis_conn.xpending_range(
-                stream,
-                self.consumer_group_name,
-                min="-",
-                max="+",
-                count=self.unacknowledged_batch_size,
-                idle=0,
-            )
-        except ResponseError as exc:
-            if "NOGROUP" not in str(exc):
-                raise
-            logger.info("Consumer group missing for %s, recreating", stream)
-            await self._declare_consumer_group()
-            return []
+        pending = await redis_conn.xpending_range(
+            stream,
+            self.consumer_group_name,
+            min=pending_start,
+            max="+",
+            count=self.unacknowledged_batch_size,
+            idle=0,
+        )
 
         claimed: list[tuple[str, dict[bytes, bytes]]] = []
+        last_checked_id: str | None = None
         for pending_message in pending:
             if len(claimed) >= count:
                 break
 
-            message_id = pending_message["message_id"]
-            if isinstance(message_id, bytes):
-                message_id = message_id.decode()
+            message_id = self._to_str(pending_message["message_id"])
+            last_checked_id = message_id
             if self._message_key(stream, message_id) in protected_message_ids:
                 continue
 
             message = await self._get_pending_message(
                 redis_conn,
                 stream,
-                cast(str, message_id),
+                message_id,
             )
             if message is None:
                 await redis_conn.xclaim(
@@ -448,13 +447,20 @@ class RedisStreamBroker(BaseRedisBroker):
                 message_ids=[message_id],
             )
             claimed.extend(cast("list[tuple[str, dict[bytes, bytes]]]", result))
-        return claimed
+        next_pending_start = "-"
+        if (
+            len(pending) == self.unacknowledged_batch_size
+            and last_checked_id is not None
+        ):
+            next_pending_start = f"({last_checked_id}"
+        return claimed, next_pending_start
 
     async def _claim_available_timed_out_messages(
         self,
         redis_conn: Redis,
         count: int,
         protected_message_ids: set[tuple[str, str]],
+        pending_starts: dict[str, str],
     ) -> list[tuple[str, dict[bytes, bytes], str]]:
         """Claim overdue messages across all configured streams."""
         claimed: list[tuple[str, dict[bytes, bytes], str]] = []
@@ -462,12 +468,16 @@ class RedisStreamBroker(BaseRedisBroker):
             remaining_count = count - len(claimed)
             if remaining_count <= 0:
                 break
-            for msg_id, msg in await self._claim_timed_out_messages(
-                redis_conn,
-                stream,
-                remaining_count,
-                protected_message_ids,
-            ):
+            claimed_messages, pending_starts[stream] = (
+                await self._claim_timed_out_messages(
+                    redis_conn,
+                    stream,
+                    remaining_count,
+                    protected_message_ids,
+                    pending_starts.get(stream, "-"),
+                )
+            )
+            for msg_id, msg in claimed_messages:
                 claimed.append((msg_id, msg, stream))
         return claimed
 
@@ -476,25 +486,18 @@ class RedisStreamBroker(BaseRedisBroker):
         redis_conn: Redis,
         count: int | None,
     ) -> Any:
-        """Read newly added stream messages, recreating a missing group once."""
-        try:
-            return await redis_conn.xreadgroup(
-                self.consumer_group_name,
-                self.consumer_name,
-                {
-                    self.queue_name: ">",
-                    **self.additional_streams,  # type: ignore[dict-item]
-                },
-                block=self.block,
-                noack=False,
-                count=count,
-            )
-        except ResponseError as exc:
-            if "NOGROUP" not in str(exc):
-                raise
-            logger.info("Consumer group missing, recreating")
-            await self._declare_consumer_group()
-            return []
+        """Read newly added stream messages."""
+        return await redis_conn.xreadgroup(
+            self.consumer_group_name,
+            self.consumer_name,
+            {
+                self.queue_name: ">",
+                **self.additional_streams,  # type: ignore[dict-item]
+            },
+            block=self.block,
+            noack=False,
+            count=count,
+        )
 
     async def _abandon_buffered_messages(
         self,
@@ -517,13 +520,12 @@ class RedisStreamBroker(BaseRedisBroker):
                     idle=ABANDONED_IDLE_MS,
                     justid=True,
                 )
-            except ResponseError as exc:
-                if "NOGROUP" not in str(exc):
-                    logger.warning(
-                        "Failed to abandon messages in stream %s",
-                        stream,
-                        exc_info=True,
-                    )
+            except RedisError:
+                logger.warning(
+                    "Failed to abandon messages in stream %s",
+                    stream,
+                    exc_info=True,
+                )
 
     def _build_ackable_message(
         self,
@@ -578,12 +580,14 @@ class RedisStreamBroker(BaseRedisBroker):
         redis_conn: Redis,
         count: int,
         delivered: set[tuple[str, str]],
+        pending_starts: dict[str, str],
     ) -> list[tuple[str, dict[bytes, bytes], str]]:
         """Claim overdue messages for taskiq's receiver."""
         return await self._claim_available_timed_out_messages(
             redis_conn,
             count or self.unacknowledged_batch_size,
             delivered,
+            pending_starts,
         )
 
     async def _build_due_reclaimed_messages(
@@ -592,6 +596,7 @@ class RedisStreamBroker(BaseRedisBroker):
         count: int,
         delivered: set[tuple[str, str]],
         last_reclaim: float,
+        pending_starts: dict[str, str],
     ) -> tuple[float, list[tuple[str, dict[bytes, bytes], str]]]:
         """Return overdue pending messages only when the reclaim interval elapsed."""
         if not self._should_reclaim(last_reclaim):
@@ -600,6 +605,7 @@ class RedisStreamBroker(BaseRedisBroker):
             redis_conn,
             count,
             delivered,
+            pending_starts,
         )
 
     async def _build_new_ackable_messages(
@@ -637,6 +643,7 @@ class RedisStreamBroker(BaseRedisBroker):
         buffered: list[tuple[str, dict[bytes, bytes], str]] = []
         slot_freed = asyncio.Event()
         last_reclaim = 0.0
+        pending_starts: dict[str, str] = {}
 
         def on_ack(message_key: tuple[str, str]) -> None:
             nonlocal unacked
@@ -665,6 +672,7 @@ class RedisStreamBroker(BaseRedisBroker):
                         count or self.unacknowledged_batch_size,
                         delivered,
                         last_reclaim,
+                        pending_starts,
                     )
                     unacked += len(buffered)
                     async for message in self._yield_buffered_messages(

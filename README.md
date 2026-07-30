@@ -113,8 +113,6 @@ For a single-stream broker, `xread_count` also prevents one worker from hoarding
 
 When a listener is closed with messages already fetched from redis but not yet yielded to taskiq, those buffered entries are claimed to an internal `abandoned` consumer and stamped as very idle. The next reclaim sweep can recover them immediately instead of waiting for `idle_timeout`.
 
-If the consumer group is removed out of band, the broker recreates it on the next `XREADGROUP` so an in-use queue heals instead of spinning on errors.
-
 The legacy `unacknowledged_lock_timeout` parameter is deprecated and ignored; reclaim correctness now relies on the `XCLAIM` min-idle-time check instead of a broker-side redis lock.
 
 ## RedisAsyncResultBackend configuration

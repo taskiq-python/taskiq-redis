@@ -1,8 +1,10 @@
 import asyncio
 import uuid
+from contextlib import suppress
 
 import pytest
 from redis.asyncio import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 from taskiq import AckableMessage, AsyncBroker, BrokerMessage
 from taskiq.message import TaskiqMessage
 
@@ -636,6 +638,138 @@ async def test_stream_broker_xread_count_limits_unacked_messages(
     await broker.shutdown()
 
 
+@pytest.mark.anyio
+async def test_stream_broker_ack_failure_keeps_prefetch_slot(
+    redis_url: str,
+    valid_broker_message: BrokerMessage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed XACK must not let the listener reserve more PEL entries."""
+    queue_name = uuid.uuid4().hex
+    consumer_group_name = uuid.uuid4().hex
+    broker = RedisStreamBroker(
+        url=redis_url,
+        approximate=False,
+        queue_name=queue_name,
+        consumer_group_name=consumer_group_name,
+        xread_block=50,
+        xread_count=1,
+        reclaim_interval=0,
+    )
+
+    await broker.startup()
+    await broker.kick(valid_broker_message)
+    await broker.kick(valid_broker_message)
+
+    iterator = broker.listen()
+    first_message = await iterator.__anext__()
+    assert isinstance(first_message, AckableMessage)
+
+    async def fail_xack(self: Redis, *args: object, **kwargs: object) -> int:
+        raise RedisConnectionError("simulated Redis disconnect")
+
+    monkeypatch.setattr(Redis, "xack", fail_xack)
+    with pytest.raises(RedisConnectionError, match="simulated Redis disconnect"):
+        await first_message.ack()  # type: ignore
+
+    second_task = asyncio.create_task(iterator.__anext__())
+    await asyncio.sleep(0.2)
+    assert not second_task.done()
+
+    second_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await second_task
+    await iterator.aclose()
+    await broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_stream_broker_reclaim_scan_advances_past_protected_messages(
+    redis_url: str,
+    valid_broker_message: BrokerMessage,
+) -> None:
+    """Protected entries at the PEL head do not hide a later orphan forever."""
+    queue_name = uuid.uuid4().hex
+    consumer_group_name = uuid.uuid4().hex
+    active_broker = RedisStreamBroker(
+        url=redis_url,
+        approximate=False,
+        queue_name=queue_name,
+        consumer_group_name=consumer_group_name,
+        consumer_name="active",
+        xread_block=50,
+        xread_count=3,
+        unacknowledged_batch_size=2,
+        idle_timeout=100,
+        reclaim_interval=0,
+        reclaim_timeout_grace=0,
+    )
+    orphan_broker = RedisStreamBroker(
+        url=redis_url,
+        approximate=False,
+        queue_name=queue_name,
+        consumer_group_name=consumer_group_name,
+        consumer_name="orphan",
+        xread_block=50,
+    )
+
+    await active_broker.startup()
+    await orphan_broker.startup()
+    for _ in range(3):
+        await active_broker.kick(valid_broker_message)
+
+    active_iterator = active_broker.listen()
+    active_messages = [await active_iterator.__anext__() for _ in range(3)]
+    assert all(isinstance(message, AckableMessage) for message in active_messages)
+
+    await active_broker.kick(valid_broker_message)
+    orphan_message = await get_message(orphan_broker)
+    assert isinstance(orphan_message, AckableMessage)
+    await asyncio.sleep(0.15)
+
+    await active_messages[0].ack()  # type: ignore
+    reclaimed_message = await asyncio.wait_for(active_iterator.__anext__(), timeout=2)
+    assert isinstance(reclaimed_message, AckableMessage)
+
+    await active_messages[1].ack()  # type: ignore
+    await active_messages[2].ack()  # type: ignore
+    await reclaimed_message.ack()  # type: ignore
+    await active_iterator.aclose()
+    await active_broker.shutdown()
+    await orphan_broker.shutdown()
+
+
+@pytest.mark.anyio
+async def test_stream_broker_ignores_redis_error_while_abandoning_buffer(
+    redis_url: str,
+    valid_broker_message: BrokerMessage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Closing a listener remains best-effort when Redis is unavailable."""
+    broker = RedisStreamBroker(
+        url=redis_url,
+        approximate=False,
+        queue_name=uuid.uuid4().hex,
+        consumer_group_name=uuid.uuid4().hex,
+        xread_block=50,
+        xread_count=2,
+    )
+    await broker.startup()
+    await broker.kick(valid_broker_message)
+    await broker.kick(valid_broker_message)
+
+    iterator = broker.listen()
+    message = await iterator.__anext__()
+    assert isinstance(message, AckableMessage)
+
+    async def fail_xclaim(self: Redis, *args: object, **kwargs: object) -> list[object]:
+        raise RedisConnectionError("simulated Redis disconnect")
+
+    monkeypatch.setattr(Redis, "xclaim", fail_xclaim)
+    await iterator.aclose()
+    await broker.shutdown()
+
+
 def test_stream_broker_additional_streams_is_deprecated() -> None:
     """Additional streams warn users to migrate to one broker per stream."""
     with pytest.warns(
@@ -710,34 +844,3 @@ async def test_stream_broker_abandons_buffered_messages_on_close(
     await reclaimed_message.ack()  # type: ignore
     await first_broker.shutdown()
     await second_broker.shutdown()
-
-
-@pytest.mark.anyio
-async def test_stream_broker_recreates_missing_consumer_group(
-    redis_url: str,
-    valid_broker_message: BrokerMessage,
-) -> None:
-    queue_name = uuid.uuid4().hex
-    consumer_group_name = uuid.uuid4().hex
-
-    broker = RedisStreamBroker(
-        url=redis_url,
-        approximate=False,
-        queue_name=queue_name,
-        consumer_group_name=consumer_group_name,
-        consumer_id="0",
-        xread_block=50,
-        reclaim_interval=0,
-    )
-
-    await broker.startup()
-    async with Redis(connection_pool=broker.connection_pool) as redis:
-        await redis.xgroup_destroy(queue_name, consumer_group_name)
-    await broker.kick(valid_broker_message)
-
-    message = await asyncio.wait_for(get_message(broker), timeout=2)
-    assert isinstance(message, AckableMessage)
-    assert message.data == valid_broker_message.message
-    await message.ack()  # type: ignore
-
-    await broker.shutdown()
