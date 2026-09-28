@@ -12,7 +12,6 @@ from redis.asyncio import (
 )
 from taskiq import ScheduleSource
 from taskiq.abc.serializer import TaskiqSerializer
-from taskiq.compat import model_dump, model_validate
 from taskiq.scheduler.scheduled_task import ScheduledTask
 from taskiq.serializers import PickleSerializer
 
@@ -50,8 +49,7 @@ class RedisScheduleSource(ScheduleSource):
         **connection_kwargs: Any,
     ) -> None:
         warnings.warn(
-            "RedisScheduleSource is deprecated. "
-            "Please switch to ListRedisScheduleSource",
+            "RedisScheduleSource is deprecated. Please switch to ListRedisScheduleSource",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -81,7 +79,7 @@ class RedisScheduleSource(ScheduleSource):
         async with Redis(connection_pool=self.connection_pool) as redis:
             await redis.set(
                 f"{self.prefix}:{schedule.schedule_id}",
-                self.serializer.dumpb(model_dump(schedule)),
+                self.serializer.dumpb(schedule.model_dump(mode="json")),
             )
 
     async def get_schedules(self) -> list[ScheduledTask]:
@@ -103,7 +101,7 @@ class RedisScheduleSource(ScheduleSource):
             if buffer:
                 schedules.extend(await redis.mget(buffer))
         return [
-            model_validate(ScheduledTask, self.serializer.loadb(schedule))  # type: ignore[arg-type]
+            ScheduledTask.model_validate(self.serializer.loadb(schedule))  # type: ignore[arg-type]
             for schedule in schedules
             if schedule
         ]
@@ -163,7 +161,7 @@ class RedisClusterScheduleSource(ScheduleSource):
         """
         await self.redis.set(
             f"{self.prefix}:{schedule.schedule_id}",
-            self.serializer.dumpb(model_dump(schedule)),
+            self.serializer.dumpb(schedule.model_dump(mode="json")),
         )
 
     async def get_schedules(self) -> list[ScheduledTask]:
@@ -177,8 +175,7 @@ class RedisClusterScheduleSource(ScheduleSource):
         schedules = []
         async for key in self.redis.scan_iter(f"{self.prefix}:*"):
             raw_schedule = await self.redis.get(key)
-            parsed_schedule = model_validate(
-                ScheduledTask,
+            parsed_schedule = ScheduledTask.model_validate(
                 self.serializer.loadb(raw_schedule),  # type: ignore[arg-type]
             )
             schedules.append(parsed_schedule)
@@ -255,7 +252,7 @@ class RedisSentinelScheduleSource(ScheduleSource):
         async with self._acquire_master_conn() as redis:
             await redis.set(
                 f"{self.prefix}:{schedule.schedule_id}",
-                self.serializer.dumpb(model_dump(schedule)),
+                self.serializer.dumpb(schedule.model_dump(mode="json")),
             )
 
     async def get_schedules(self) -> list[ScheduledTask]:
@@ -277,7 +274,7 @@ class RedisSentinelScheduleSource(ScheduleSource):
             if buffer:
                 schedules.extend(await redis.mget(buffer))
         return [
-            model_validate(ScheduledTask, self.serializer.loadb(schedule))  # type: ignore[arg-type]
+            ScheduledTask.model_validate(self.serializer.loadb(schedule))  # type: ignore[arg-type]
             for schedule in schedules
             if schedule
         ]
