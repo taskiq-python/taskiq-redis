@@ -63,7 +63,7 @@ class ListRedisScheduleSource(ScheduleSource):
             logger.info("Migrating schedules from previous source")
             await self._previous_schedule_source.startup()
             schedules = await self._previous_schedule_source.get_schedules()
-            logger.info(f"Found {len(schedules)}")
+            logger.info("Found %d", len(schedules))
             for schedule in schedules:
                 await self.add_schedule(schedule)
                 if self._delete_schedules_after_migration:
@@ -143,7 +143,7 @@ class ListRedisScheduleSource(ScheduleSource):
             if raw_schedule is not None:
                 logger.debug("Deleting schedule %s", schedule_id)
                 schedule = ScheduledTask.model_validate(
-                    self._serializer.loadb(raw_schedule)  # type: ignore[arg-type]
+                    self._serializer.loadb(raw_schedule),  # type: ignore[arg-type]
                 )
                 # We need to remove the schedule from the cron or time list.
                 if schedule.cron is not None:

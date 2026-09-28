@@ -49,7 +49,7 @@ class RedisScheduleSource(ScheduleSource):
         **connection_kwargs: Any,
     ) -> None:
         warnings.warn(
-            "RedisScheduleSource is deprecated. Please switch to ListRedisScheduleSource",
+            "RedisScheduleSource is deprecated. Please switch to ListRedisScheduleSource",  # noqa: E501
             DeprecationWarning,
             stacklevel=2,
         )
