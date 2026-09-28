@@ -12,35 +12,32 @@ permissions:
 
 jobs:
   lint:
-    strategy:
-      matrix:
-        cmd: [ "black", "ruff", "mypy" ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - id: setup-uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "latest"
           python-version: "3.13"
       - name: Install deps
         run: uv sync --all-extras
       - name: Run lint check
-        run: uv run pre-commit run -a ${{ matrix.cmd }}
+        run: uv run prek run -a
   pytest:
     strategy:
       matrix:
-        py_version: [ "3.10", "3.11", "3.12", "3.13" ]
+        py_version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Redis instance and Redis cluster
         run: docker compose up -d --wait
       - name: Set up uv and enable cache
         id: setup-uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           cache-suffix: "${{ matrix.py_version }}"
@@ -53,7 +50,7 @@ jobs:
       - name: Generate coverage report
         run: uv run coverage xml
       - name: Upload coverage reports to Codecov with GitHub Action
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         if: matrix.py_version == '3.10'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
