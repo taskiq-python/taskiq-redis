@@ -328,7 +328,9 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result: TaskiqResult[_ReturnType] = TaskiqResult[_ReturnType].model_validate(  # noqa: E501
+        taskiq_result: TaskiqResult[_ReturnType] = TaskiqResult[
+            _ReturnType
+        ].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
