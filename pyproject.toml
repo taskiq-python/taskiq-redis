@@ -124,6 +124,7 @@ lint.ignore = [
   "ANN401",  # typing.Any are disallowed in `**kwargs
   "PLR0913",  # Too many arguments for function call
   "D106",  # Missing docstring in public nested class
+  "PLR0917",  # Too many positional arguments
 ]
 exclude = [".venv/"]
 line-length = 88
