@@ -5,7 +5,6 @@ from typing import Any
 from redis.asyncio import BlockingConnectionPool, Redis
 from taskiq import ScheduledTask, ScheduleSource
 from taskiq.abc.serializer import TaskiqSerializer
-from taskiq.compat import model_dump, model_validate
 from taskiq.serializers import PickleSerializer
 from typing_extensions import Self
 
@@ -64,7 +63,7 @@ class ListRedisScheduleSource(ScheduleSource):
             logger.info("Migrating schedules from previous source")
             await self._previous_schedule_source.startup()
             schedules = await self._previous_schedule_source.get_schedules()
-            logger.info(f"Found {len(schedules)}")
+            logger.info("Found %d", len(schedules))
             for schedule in schedules:
                 await self.add_schedule(schedule)
                 if self._delete_schedules_after_migration:
@@ -143,8 +142,7 @@ class ListRedisScheduleSource(ScheduleSource):
             raw_schedule = await redis.getdel(self._get_data_key(schedule_id))
             if raw_schedule is not None:
                 logger.debug("Deleting schedule %s", schedule_id)
-                schedule = model_validate(
-                    ScheduledTask,
+                schedule = ScheduledTask.model_validate(
                     self._serializer.loadb(raw_schedule),  # type: ignore[arg-type]
                 )
                 # We need to remove the schedule from the cron or time list.
@@ -162,7 +160,7 @@ class ListRedisScheduleSource(ScheduleSource):
             # At first we set data key which contains the schedule data.
             await redis.set(
                 f"{self._prefix}:data:{schedule.schedule_id}",
-                self._serializer.dumpb(model_dump(schedule)),
+                self._serializer.dumpb(schedule.model_dump(mode="json")),
             )
             # Then we add the schedule to the cron or time list.
             # This is an optimization, so we can get all the schedules
@@ -229,7 +227,7 @@ class ListRedisScheduleSource(ScheduleSource):
                 buffer = buffer[self._buffer_size :]
 
         return [
-            model_validate(ScheduledTask, self._serializer.loadb(schedule))  # type: ignore[arg-type]
+            ScheduledTask.model_validate(self._serializer.loadb(schedule))  # type: ignore[arg-type]
             for schedule in schedules
             if schedule
         ]

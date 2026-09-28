@@ -7,7 +7,6 @@ from redis.asyncio.cluster import RedisCluster
 from redis.asyncio.connection import Connection
 from taskiq import AsyncResultBackend
 from taskiq.abc.serializer import TaskiqSerializer
-from taskiq.compat import model_dump, model_validate
 from taskiq.depends.progress_tracker import TaskProgress
 from taskiq.result import TaskiqResult
 from taskiq.serializers import PickleSerializer
@@ -107,7 +106,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: TaskiqResult instance.
         """
         name = self._task_name(task_id)
-        value = self.serializer.dumpb(model_dump(result))
+        value = self.serializer.dumpb(result.model_dump(mode="json"))
         async with Redis(connection_pool=self.redis_pool) as redis:
             if self.result_ex_time:
                 await redis.set(name=name, value=value, ex=self.result_ex_time)
@@ -154,8 +153,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result = model_validate(
-            TaskiqResult[_ReturnType],
+        taskiq_result = TaskiqResult[_ReturnType].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
@@ -179,7 +177,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: task's TaskProgress instance.
         """
         name = self._task_name(task_id) + PROGRESS_KEY_SUFFIX
-        value = self.serializer.dumpb(model_dump(progress))
+        value = self.serializer.dumpb(progress.model_dump(mode="json"))
         async with Redis(connection_pool=self.redis_pool) as redis:
             if self.result_ex_time:
                 await redis.set(name=name, value=value, ex=self.result_ex_time)
@@ -206,8 +204,7 @@ class RedisAsyncResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             return None
 
-        return model_validate(
-            TaskProgress[_ReturnType],
+        return TaskProgress[_ReturnType].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
@@ -286,7 +283,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: TaskiqResult instance.
         """
         name = self._task_name(task_id)
-        value = self.serializer.dumpb(model_dump(result))
+        value = self.serializer.dumpb(result.model_dump(mode="json"))
         async with self.redis as redis:
             if self.result_ex_time:
                 await redis.set(name=name, value=value, ex=self.result_ex_time)
@@ -331,8 +328,9 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result: TaskiqResult[_ReturnType] = model_validate(
-            TaskiqResult[_ReturnType],
+        taskiq_result: TaskiqResult[_ReturnType] = TaskiqResult[
+            _ReturnType
+        ].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
@@ -356,7 +354,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: task's TaskProgress instance.
         """
         name = self._task_name(task_id) + PROGRESS_KEY_SUFFIX
-        value = self.serializer.dumpb(model_dump(progress))
+        value = self.serializer.dumpb(progress.model_dump(mode="json"))
         async with self.redis as redis:
             if self.result_ex_time:
                 await redis.set(name=name, value=value, ex=self.result_ex_time)
@@ -382,8 +380,7 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             return None
 
-        return model_validate(
-            TaskProgress[_ReturnType],
+        return TaskProgress[_ReturnType].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
@@ -470,7 +467,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: TaskiqResult instance.
         """
         name = self._task_name(task_id)
-        value = self.serializer.dumpb(model_dump(result))
+        value = self.serializer.dumpb(result.model_dump(mode="json"))
         async with self._acquire_master_conn() as redis:
             if self.result_ex_time:
                 await redis.set(name=name, value=value, ex=self.result_ex_time)
@@ -517,8 +514,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             raise ResultIsMissingError
 
-        taskiq_result = model_validate(
-            TaskiqResult[_ReturnType],
+        taskiq_result = TaskiqResult[_ReturnType].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
@@ -542,7 +538,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         :param result: task's TaskProgress instance.
         """
         name = self._task_name(task_id) + PROGRESS_KEY_SUFFIX
-        value = self.serializer.dumpb(model_dump(progress))
+        value = self.serializer.dumpb(progress.model_dump(mode="json"))
         async with self._acquire_master_conn() as redis:
             if self.result_ex_time:
                 await redis.set(name=name, value=value, ex=self.result_ex_time)
@@ -569,8 +565,7 @@ class RedisAsyncSentinelResultBackend(AsyncResultBackend[_ReturnType]):
         if result_value is None:
             return None
 
-        return model_validate(
-            TaskProgress[_ReturnType],
+        return TaskProgress[_ReturnType].model_validate(
             self.serializer.loadb(result_value),  # type: ignore[arg-type]
         )
 
