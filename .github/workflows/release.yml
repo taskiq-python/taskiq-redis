@@ -19,7 +19,7 @@ jobs:
           enable-cache: false
           python-version: "3.12"
           version: "latest"
-      - run: uv version --frozen --no-sync "${GITHUB_REF_NAME}"
+      - run: uv version --frozen "${GITHUB_REF_NAME}"
       - run: uv build
       - name: Release package
         env:
