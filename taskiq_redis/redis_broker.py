@@ -8,7 +8,14 @@ from typing import (
     TypeVar,
 )
 
-from redis.asyncio import BlockingConnectionPool, Connection, Redis, ResponseError
+from redis.asyncio import (
+    BlockingConnectionPool,
+    Connection,
+    ConnectionError,
+    Redis,
+    ResponseError,
+    TimeoutError,
+)
 from taskiq import AckableMessage
 from taskiq.abc.broker import AsyncBroker
 from taskiq.abc.result_backend import AsyncResultBackend
@@ -133,7 +140,7 @@ class ListQueueBroker(BaseRedisBroker):
                     if brpop_result is None:
                         continue
                     yield brpop_result[redis_brpop_data_position]  # type: ignore[misc]
-            except ConnectionError as exc:
+            except (ConnectionError, TimeoutError) as exc:
                 logger.warning("Redis connection error: %s", exc)
                 continue
 

@@ -104,6 +104,16 @@ async def test_pub_sub_broker_max_connections(
 
 
 @pytest.mark.anyio
+async def test_list_queue_broker_retries_on_connection_error() -> None:
+    """Test that listen() retries on a redis ConnectionError instead of raising."""
+    broker = ListQueueBroker(url="redis://localhost:1/0")
+    gen = broker.listen()
+
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(gen.__anext__(), timeout=0.5)
+
+
+@pytest.mark.anyio
 async def test_list_queue_broker(
     valid_broker_message: BrokerMessage,
     redis_url: str,
