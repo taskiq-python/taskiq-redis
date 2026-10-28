@@ -23,6 +23,56 @@ def test_no_url_should_raise_typeerror() -> None:
         ListQueueBroker()  # type: ignore
 
 
+@pytest.mark.anyio
+async def test_stream_reclaims_without_new_messages(
+    valid_broker_message: BrokerMessage,
+    redis_url: str,
+) -> None:
+    stream = uuid.uuid4().hex
+    broker = RedisStreamBroker(
+        url=redis_url,
+        queue_name=stream,
+        consumer_group_name=stream,
+        xread_block=10,
+        idle_timeout=600_000,
+        unacknowledged_batch_size=1,
+        unacknowledged_lock_timeout=600,
+    )
+    await broker.startup()
+    listener = broker.listen()
+    try:
+        async with Redis(connection_pool=broker.connection_pool) as redis:
+            message_id = await redis.xadd(
+                stream,
+                {"data": valid_broker_message.message},
+            )
+            await redis.xreadgroup(
+                stream,
+                "dead-worker",
+                {stream: ">"},
+                count=1,
+            )
+            await redis.xclaim(
+                stream,
+                stream,
+                "dead-worker",
+                0,
+                [message_id],
+                idle=broker.idle_timeout + 1000,
+                justid=True,
+            )
+        recovered = await asyncio.wait_for(anext(listener), timeout=1)
+        assert recovered.data == valid_broker_message.message
+        pending_ack = recovered.ack()
+        assert pending_ack is not None
+        await pending_ack
+    finally:
+        await listener.aclose()
+        async with Redis(connection_pool=broker.connection_pool) as redis:
+            await redis.delete(stream, f"autoclaim:{stream}:{stream}")
+        await broker.shutdown()
+
+
 async def get_message(
     broker: AsyncBroker,
 ) -> bytes | AckableMessage:

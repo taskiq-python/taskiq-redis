@@ -284,8 +284,6 @@ class RedisStreamBroker(BaseRedisBroker):
                     noack=False,
                     count=self.count,
                 )
-                if not fetched:
-                    continue
                 for stream, msg_list in fetched:  # type: ignore[str-unpack]
                     for msg_id, msg in msg_list:  # type: ignore[str-unpack,union-attr]
                         logger.debug("Received message: %s", msg)
