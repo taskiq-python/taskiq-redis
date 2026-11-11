@@ -89,8 +89,10 @@ class PubSubBroker(BaseRedisBroker):
 
         :yields: broker messages.
         """
-        async with Redis(connection_pool=self.connection_pool) as redis_conn:
-            redis_pubsub_channel = redis_conn.pubsub()
+        async with (
+            Redis(connection_pool=self.connection_pool) as redis_conn,
+            redis_conn.pubsub() as redis_pubsub_channel,
+        ):
             await redis_pubsub_channel.subscribe(self.queue_name)
             async for message in redis_pubsub_channel.listen():
                 if not message:
