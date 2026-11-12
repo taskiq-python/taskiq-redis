@@ -284,13 +284,13 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         """
         name = self._task_name(task_id)
         value = self.serializer.dumpb(result.model_dump(mode="json"))
-        async with self.redis as redis:
-            if self.result_ex_time:
-                await redis.set(name=name, value=value, ex=self.result_ex_time)
-            elif self.result_px_time:
-                await redis.set(name=name, value=value, px=self.result_px_time)
-            else:
-                await redis.set(name=name, value=value)
+        redis = await self.redis.initialize()
+        if self.result_ex_time:
+            await redis.set(name=name, value=value, ex=self.result_ex_time)
+        elif self.result_px_time:
+            await redis.set(name=name, value=value, px=self.result_px_time)
+        else:
+            await redis.set(name=name, value=value)
 
     async def is_result_ready(self, task_id: str) -> bool:
         """
@@ -355,13 +355,13 @@ class RedisAsyncClusterResultBackend(AsyncResultBackend[_ReturnType]):
         """
         name = self._task_name(task_id) + PROGRESS_KEY_SUFFIX
         value = self.serializer.dumpb(progress.model_dump(mode="json"))
-        async with self.redis as redis:
-            if self.result_ex_time:
-                await redis.set(name=name, value=value, ex=self.result_ex_time)
-            elif self.result_px_time:
-                await redis.set(name=name, value=value, px=self.result_px_time)
-            else:
-                await redis.set(name=name, value=value)
+        redis = await self.redis.initialize()
+        if self.result_ex_time:
+            await redis.set(name=name, value=value, ex=self.result_ex_time)
+        elif self.result_px_time:
+            await redis.set(name=name, value=value, px=self.result_px_time)
+        else:
+            await redis.set(name=name, value=value)
 
     async def get_progress(
         self,
