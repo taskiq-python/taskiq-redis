@@ -138,6 +138,22 @@ async def start_response_gate(
     return gate, target
 
 
+async def seed_cluster_records(
+    backend: RedisAsyncClusterResultBackend[int],
+    task_id: str,
+    result: TaskiqResult[int],
+    progress: TaskProgress[int],
+    write_kind: str,
+) -> None:
+    """Exercise both write methods as the first operation on a cold client."""
+    if write_kind == "result":
+        await backend.set_result(task_id, result)
+        await backend.set_progress(task_id, progress)
+    else:
+        await backend.set_progress(task_id, progress)
+        await backend.set_result(task_id, result)
+
+
 @pytest.mark.anyio
 @pytest.mark.parametrize("write_kind", ["result", "progress"])
 @pytest.mark.parametrize("read_kind", ["result", "consume", "progress", "ready"])
@@ -170,11 +186,13 @@ async def test_cluster_write_preserves_pending_read(
         write_id + PROGRESS_KEY_SUFFIX,
     )
     try:
-        await backend.redis.initialize()
-        await backend.set_result(read_id, result)
-        await backend.set_progress(read_id, progress)
+        await seed_cluster_records(backend, read_id, result, progress, write_kind)
         routed_node = backend.redis.get_node_from_key(read_id)
         assert routed_node is not None and int(routed_node.port) == gate.port
+        # Resolve the read topology after cold-write coverage. On the baseline
+        # the seeding writes have closed the client; the read still needs to
+        # traverse the private relay before we can control its response.
+        await backend.redis.initialize()
         reads: dict[str, Callable[[str], Coroutine[Any, Any, Any]]] = {
             "result": backend.get_result,
             "consume": backend.get_result,
