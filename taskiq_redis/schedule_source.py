@@ -175,6 +175,8 @@ class RedisClusterScheduleSource(ScheduleSource):
         schedules = []
         async for key in self.redis.scan_iter(f"{self.prefix}:*"):
             raw_schedule = await self.redis.get(key)
+            if raw_schedule is None:
+                continue
             parsed_schedule = ScheduledTask.model_validate(
                 self.serializer.loadb(raw_schedule),  # type: ignore[arg-type]
             )
