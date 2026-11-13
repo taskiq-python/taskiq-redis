@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from unittest.mock import patch
 
 import pytest
 from freezegun import freeze_time
@@ -64,12 +65,48 @@ async def test_schedule_from_past(redis_url: str) -> None:
     # schedules that are in the past.
     schedules = await source.get_schedules()
     assert schedules == [schedule]
+    # Past schedules are returned on every call until they are sent.
+    assert await source.get_schedules() == [schedule]
     for schedule in schedules:
         await source.post_send(schedule)
-    # After getting the schedules for the second time,
-    # all the schedules in the past are ignored.
+    # Sent schedules are removed from the source.
     schedules = await source.get_schedules()
     assert schedules == []
+
+    # Schedule that lands in an already passed minute after the first run
+    # is picked up on the first call of the next minute.
+    late_schedule = ScheduledTask(
+        task_name="test_task",
+        labels={},
+        args=[],
+        kwargs={},
+        time=datetime.datetime.now(datetime.timezone.utc)
+        - datetime.timedelta(minutes=2),
+    )
+    await source.add_schedule(late_schedule)
+    with freeze_time("2025-01-01 00:01:00"):
+        assert await source.get_schedules() == [late_schedule]
+
+
+@pytest.mark.anyio
+async def test_past_schedules_lookup_once_per_minute(redis_url: str) -> None:
+    """Test that past time keys are scanned once per minute, not on every call."""
+    prefix = uuid.uuid4().hex
+    source = ListRedisScheduleSource(redis_url, prefix=prefix)
+    with (
+        patch.object(
+            source,
+            "_get_previous_time_schedules",
+            wraps=source._get_previous_time_schedules,
+        ) as lookup,
+        freeze_time("2025-01-01 00:00:00") as frozen,
+    ):
+        for _ in range(60):
+            await source.get_schedules()
+            frozen.tick()
+        assert lookup.await_count == 1
+        await source.get_schedules()
+        assert lookup.await_count == 2
 
 
 @pytest.mark.anyio
