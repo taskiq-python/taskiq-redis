@@ -46,7 +46,8 @@ class ListRedisScheduleSource(ScheduleSource):
         if serializer is None:
             serializer = PickleSerializer()
         self._serializer = serializer
-        self._is_first_run = True
+        self._last_catch_up_minute: datetime.datetime | None = None
+        self._past_schedule_ids: list[bytes] = []
         self._previous_schedule_source: ScheduleSource | None = None
         self._delete_schedules_after_migration: bool = True
         self._skip_past_schedules = skip_past_schedules
@@ -113,8 +114,8 @@ class ListRedisScheduleSource(ScheduleSource):
         We do this by getting all the time keys and checking if the time
         is less than the current time.
 
-        This function is called only during the first run to minimize
-        the number of requests to the Redis server.
+        It runs on the first get_schedules() call of each minute
+        to minimize the number of requests to the Redis server.
         """
         logger.info("Getting previous time schedules")
         minute_before = datetime.datetime.now(
@@ -127,7 +128,10 @@ class ListRedisScheduleSource(ScheduleSource):
             time_keys: list[str] = []
             # We need to get all the time keys and check if the time is less than
             # the current time.
-            async for key in redis.scan_iter(f"{self._prefix}:time:*"):
+            async for key in redis.scan_iter(
+                f"{self._prefix}:time:*",
+                count=1000,
+            ):
                 key_time = self._parse_time_key(key.decode())
                 if key_time and key_time <= minute_before:
                     time_keys.append(key.decode())
@@ -191,16 +195,20 @@ class ListRedisScheduleSource(ScheduleSource):
         What it does is get all the cron schedules and time schedules
         for the current time and return them.
 
-        If it's the first run, it also gets all the time schedules
-        that are in the past and haven't been sent yet.
+        It also returns the time schedules that are in the past and
+        haven't been sent yet. Their ids are looked up on the first call
+        of every minute and reused by the other calls of that minute.
         """
         schedules = []
         current_time = datetime.datetime.now(datetime.timezone.utc)
-        timed: list[bytes] = []
-        # Only during first run, we need to get previous time schedules
-        if not self._skip_past_schedules:
-            timed = await self._get_previous_time_schedules()
-            self._is_first_run = False
+        current_minute = current_time.replace(second=0, microsecond=0)
+        if (
+            not self._skip_past_schedules
+            and current_minute != self._last_catch_up_minute
+        ):
+            self._past_schedule_ids = await self._get_previous_time_schedules()
+            self._last_catch_up_minute = current_minute
+        timed = list(self._past_schedule_ids)
         async with Redis(connection_pool=self._connection_pool) as redis:
             buffer: list[bytes] = []
             crons = await redis.lrange(self._get_cron_key(), 0, -1)
