@@ -128,7 +128,10 @@ class ListRedisScheduleSource(ScheduleSource):
             time_keys: list[str] = []
             # We need to get all the time keys and check if the time is less than
             # the current time.
-            async for key in redis.scan_iter(f"{self._prefix}:time:*"):
+            async for key in redis.scan_iter(
+                f"{self._prefix}:time:*",
+                count=1000,
+            ):
                 key_time = self._parse_time_key(key.decode())
                 if key_time and key_time <= minute_before:
                     time_keys.append(key.decode())
